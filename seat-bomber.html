@@ -72,7 +72,7 @@
   #floor{display:block;font-size:0}
   .frow{display:flex}
   .wrow{display:flex}
-  .wseg{width:46px;height:14px;flex:none}
+  .wseg{width:54px;height:16px;flex:none}
   .wseg.sand{background:repeating-linear-gradient(90deg,var(--pathA) 0 9px,var(--pathB) 9px 18px);
     border-top:2px dashed rgba(0,0,0,.35);border-bottom:2px dashed rgba(0,0,0,.35);box-sizing:border-box}
   .wseg.wall{background:var(--wall)}
@@ -85,7 +85,7 @@
     text-transform:uppercase;margin-bottom:10px}
   section.panel h2::before{content:'▸ ';color:var(--accent)}
   /* ── tiles ─────────────────────────── */
-  .cell{width:46px;height:46px;position:relative;display:flex;align-items:center;
+  .cell{width:54px;height:54px;position:relative;display:flex;align-items:center;
     justify-content:center;cursor:default;user-select:none}
   .cell.seat{cursor:pointer}
   .cell.seat:hover .bomber{filter:brightness(1.25)}
@@ -96,8 +96,8 @@
     box-shadow:inset 0 0 0 1px var(--wallLn)}
   .cell.aisle{background:var(--pathA)}
   .cell.aisle.alt{background:var(--pathB)}
-  .cell.aisle.dash::before{content:'';position:absolute;left:21px;top:7px;width:4px;height:18px;background:var(--gold)}
-  .cell.emptyseat::before{content:'';position:absolute;inset:14px;border:2px dashed rgba(20,80,45,.55)}
+  .cell.aisle.dash::before{content:'';position:absolute;left:25px;top:8px;width:4px;height:21px;background:var(--gold)}
+  .cell.emptyseat::before{content:'';position:absolute;inset:17px;border:2px dashed rgba(20,80,45,.55)}
   /* 隔板(木柵欄):實體元素,柵欄柱紋理 */
   .fence{position:absolute;z-index:1;pointer-events:none;
     background:repeating-linear-gradient(90deg,var(--fenceHi) 0 7px,var(--fence) 7px 14px)}
@@ -116,24 +116,24 @@
   .walk.wE{right:0;border-left:2px dashed rgba(0,0,0,.35)}
   .walk.wW{left:0;border-right:2px dashed rgba(0,0,0,.35)}
   /* 炸彈人 sprite */
-  .bomber{position:absolute;inset:3px;pointer-events:none}
-  .bomber .hood{position:absolute;left:5px;right:5px;top:3px;height:22px;
-    background:var(--hood);border:3px solid #14161A;border-radius:12px 12px 3px 3px!important}
+  .bomber{position:absolute;inset:4px;pointer-events:none}
+  .bomber .hood{position:absolute;left:6px;right:6px;top:4px;height:26px;
+    background:var(--hood);border:3px solid #14161A;border-radius:14px 14px 3px 3px!important}
   .bomber .hood::before{content:'';position:absolute;top:-7px;left:50%;margin-left:-2px;
     width:5px;height:5px;background:#14161A}
-  .bomber .face{position:absolute;left:10px;right:10px;top:15px;height:13px;
-    background:radial-gradient(circle 2.6px at 30% 45%,#14161A 95%,transparent),
-               radial-gradient(circle 2.6px at 70% 45%,#14161A 95%,transparent),#F5F5F5;
+  .bomber .face{position:absolute;left:12px;right:12px;top:18px;height:15px;
+    background:radial-gradient(circle 3px at 30% 45%,#14161A 95%,transparent),
+               radial-gradient(circle 3px at 70% 45%,#14161A 95%,transparent),#F5F5F5;
     border:3px solid #14161A;border-top:0}
-  .bomber .shadow{position:absolute;left:9px;right:9px;bottom:1px;height:5px;
+  .bomber .shadow{position:absolute;left:11px;right:11px;bottom:1px;height:6px;
     background:rgba(0,60,25,.4);border-radius:50%!important}
   /* 背號(sect id)印在頭罩上 */
-  .bomber .snum{position:absolute;left:0;right:0;top:4px;text-align:center;
+  .bomber .snum{position:absolute;left:0;right:0;top:6px;text-align:center;
     font-family:var(--mono);font-size:11px;line-height:11px;color:#fff;
     text-shadow:1px 1px 0 #000,-1px 1px 0 #000,1px -1px 0 #000,-1px -1px 0 #000;z-index:2}
   /* 人名(可開關) */
-  .pname{position:absolute;bottom:-2px;left:-4px;right:-4px;text-align:center;
-    font-family:var(--mono);font-size:10px;line-height:11px;color:#fff;
+  .pname{position:absolute;bottom:-1px;left:-4px;right:-4px;text-align:center;
+    font-family:var(--mono);font-size:11px;line-height:11px;color:#fff;
     text-shadow:1px 1px 0 #000,-1px 1px 0 #000,1px -1px 0 #000,-1px -1px 0 #000;
     z-index:2;pointer-events:none;white-space:nowrap;overflow:hidden}
   .cell.locked .bomber::after{content:'💣';position:absolute;top:-9px;right:-7px;font-size:17px;
@@ -152,6 +152,9 @@
   .cell.dim{filter:grayscale(.9) brightness(.42)}
   .cell.sel{outline:3px solid var(--blast);outline-offset:-3px;animation:blink .6s steps(2) infinite}
   .cell.hot{outline:3px solid #FFF;outline-offset:-3px;z-index:2}
+  .homeMark{position:absolute;inset:1px;border:3px dashed var(--gold);z-index:2;pointer-events:none}
+  .homeMark span{position:absolute;top:-2px;left:-2px;background:var(--gold);color:#101010;
+    font-family:var(--mono);font-size:9px;line-height:11px;padding:0 3px;font-weight:700}
   @keyframes blink{50%{outline-color:transparent}}
   /* ── controls ──────────────────────── */
   button{font-family:var(--sans);font-size:12px;border:2px solid #000;background:var(--panel2);
@@ -290,7 +293,6 @@
       <input type="file" id="fileInput" accept=".json" style="display:none">
       <div class="row">
         <button id="btnDemo">載入示範樓面</button>
-        <button id="btnExportGrid">匯出現況</button>
       </div>
     </section>
 
@@ -324,7 +326,7 @@
       <label class="param">w3 距離 <input type="number" id="pW3" value="0.15" step="0.05" min="0"></label>
       <label class="param">w4 dept連通 <input type="number" id="pW4" value="0.15" step="0.05" min="0"></label>
       <label class="param">每輪最多移動 <input type="number" id="pMax" value="5" step="1" min="1" max="20"></label>
-      <label class="param">候選半徑(格) <input type="number" id="pRad" value="8" step="1" min="2"></label>
+      <label class="param">候選半徑(99=全場) <input type="number" id="pRad" value="99" step="1" min="2"></label>
     </section>
 
     <section class="panel">
@@ -332,7 +334,6 @@
       <div class="row">
         <button class="primary" id="btnRun">▶ 跑一輪</button>
         <button id="btnUndo">↩ 復原</button>
-        <button id="btnExportMoves">匯出 moves</button>
       </div>
       <label style="display:flex;align-items:center;gap:8px;font-family:var(--mono);font-size:12px;margin-bottom:8px;cursor:pointer">
         <input type="checkbox" id="pAuto" style="width:16px;height:16px;accent-color:#FF7830">
@@ -345,6 +346,18 @@
       <h2>存檔槽 / Save States</h2>
       <div class="row"><button id="btnSave">💾 手動存檔</button></div>
       <div id="checkpoints" style="font-size:11px;color:var(--soft)">—</div>
+    </section>
+
+    <section class="panel">
+      <h2>匯出 / Export</h2>
+      <div class="row">
+        <button id="btnExportGrid">💾 匯出完整存檔</button>
+        <button id="btnExportMoves">📋 產出搬遷工單</button>
+      </div>
+      <p style="font-size:11px;color:var(--soft);line-height:1.6">
+        <b style="color:var(--gold)">完整存檔</b>:唯一要保管的正本(地形/佈局/歷史/約束),下次拖回即續玩。<br>
+        <b style="color:var(--gold)">搬遷工單</b>:定案時按,產出給簽核與執行的 CSV(可隨時從存檔重生)。
+      </p>
     </section>
 
     <section class="panel">
@@ -409,6 +422,11 @@ function loadGrid(json){
     members.set(m.id,{...m,locked:!!m.locked,homeSeat:home});
     assign.set(m.id,sid); occ.set(sid,m.id);
   }
+  // 還原 session(完整存檔才有;新資料則為空)
+  history=(json.history||[]).map(x=>({...x}));
+  round=json.round||0;
+  for(const b of (json.banned_moves||[]))bannedMoves.add(b);
+  for(const b of (json.banned_seats||[]))if(seats.has(b))bannedSeats.add(b);
   // 基準分 = R0 佈局的分數(不是載入當下的佈局)
   const asg0=new Map([...members.values()].map(m=>[m.id,m.homeSeat]));
   baseScore=totalScore(asg0);
@@ -727,7 +745,7 @@ function renderAll(){
   rowY=[];let curY=0;
   let rowDiv=null;
   for(let r=0;r<G.rows;r++){
-  rowY[r]=curY;curY+=46;
+  rowY[r]=curY;curY+=54;
   rowDiv=document.createElement('div');rowDiv.className='frow';
   floor.appendChild(rowDiv);
   for(let c=0;c<G.cols;c++){
@@ -770,7 +788,7 @@ function renderAll(){
       // sect id 格式如 "1-0A":≤4 字顯示完整 id;更長才取破折號後綴
       const sidStr=String(m.sect);
       const snum=sidStr.length<=4?sidStr:(sidStr.split('-').pop()||sidStr.slice(-3));
-      const snumSize=snum.length>3?'9px':'11px';
+      const snumSize=snum.length>3?'10px':'12px';
       b.innerHTML=`<div class="shadow"></div><div class="hood"></div><div class="face"></div><div class="snum" style="font-size:${snumSize}">${snum}</div>`;
       div.appendChild(b);
       if($('pNames').checked){
@@ -786,6 +804,13 @@ function renderAll(){
     }else{
       div.classList.add('emptyseat');
       if(bannedSeats.has(sid))div.classList.add('bannedseat');
+    }
+    if(selectedMember){
+      const sm=members.get(selectedMember);
+      if(sm&&sm.homeSeat===sid&&assign.get(selectedMember)!==sid){
+        const hm=document.createElement('div');hm.className='homeMark';
+        hm.innerHTML='<span>R0 起點</span>';div.appendChild(hm);
+      }
     }
     if(swapSel===sid)div.classList.add('sel');
     div.onclick=e=>cellClick(sid,e);
@@ -807,7 +832,7 @@ function renderAll(){
       else if(t2==='AISLE')seg.classList.add('aisle');
       wr.appendChild(seg);
     }
-    floor.appendChild(wr);curY+=14;
+    floor.appendChild(wr);curY+=16;
   }
   }
   drawArrows();renderScore();renderLegend(colors);renderProposals();renderSectInfo(colors);renderTeamBar(colors);
@@ -827,10 +852,10 @@ function showTip(e,sid){
 function cellClick(sid,e){
   if(mode==='terrain'){
     // 點邊緣 13px 內 = 該側隔板開關;點中央 = 座位 ⇄ 走道
-    const x=e?e.offsetX:23,y=e?e.offsetY:23,M=13;
+    const x=e?e.offsetX:27,y=e?e.offsetY:27,M=15;
     let side=null;
-    if(y<M)side='N';else if(y>46-M)side='S';
-    else if(x<M)side='W';else if(x>46-M)side='E';
+    if(y<M)side='N';else if(y>54-M)side='S';
+    else if(x<M)side='W';else if(x>54-M)side='E';
     if(side)toggleBarrier(sid,side);
     else seatToAisle(sid);
     return;
@@ -861,7 +886,21 @@ function drawArrows(){
   const svg=$('arrows');svg.innerHTML='';
   svg.setAttribute('width',$('floor').offsetWidth);
   svg.setAttribute('height',$('floor').offsetHeight);
-  const ctr=sid=>{const[r,c]=posOf(sid);return[c*46+23,(rowY[r]||r*46)+23];};
+  const ctr=sid=>{const[r,c]=posOf(sid);return[c*54+27,(rowY[r]||r*54)+27];};
+  // 選取的已搬成員:R0 起點 → 現位 虛線
+  if(selectedMember){
+    const sm=members.get(selectedMember);
+    const cur=assign.get(selectedMember);
+    if(sm&&cur!==sm.homeSeat&&G.seats.has(sm.homeSeat)){
+      const[x1,y1]=ctr(sm.homeSeat),[x2,y2]=ctr(cur);
+      const l=document.createElementNS('http://www.w3.org/2000/svg','line');
+      l.setAttribute('x1',x1);l.setAttribute('y1',y1);
+      l.setAttribute('x2',x2);l.setAttribute('y2',y2);
+      l.setAttribute('stroke','var(--gold)');l.setAttribute('stroke-width','3');
+      l.setAttribute('stroke-dasharray','7 5');l.setAttribute('stroke-linecap','square');
+      svg.appendChild(l);
+    }
+  }
   for(const m of proposals){
     if(m.status!=='pending')continue;
     const[x1,y1]=ctr(m.from),[x2,y2]=ctr(m.to);
@@ -903,6 +942,7 @@ function renderSectInfo(colors){
     <div class="hd"><span class="sw" style="background:${colors[selectedSect]}"></span>
       <b>${selectedSect}</b><span style="color:var(--soft)">/ ${dept} · 選取 ${selectedMember}</span></div>
     <table>
+      <tr><td>選取者座位</td><td>${assign.get(selectedMember)}${(()=>{const sm=members.get(selectedMember);return assign.get(selectedMember)!==sm.homeSeat?`(R0:${sm.homeSeat})`:'(未搬)';})()}</td></tr>
       <tr><td>人數</td><td>${st.n}</td></tr>
       <tr><td>位移人數(vs 初始)</td><td>${st.moved} 人</td></tr>
       <tr><td>連通區塊</td><td>${st.comp} 塊</td></tr>
@@ -1046,12 +1086,16 @@ $('btnExportMoves').onclick=()=>{
 };
 $('btnExportGrid').onclick=()=>{
   if(!G)return;
-  dl('grid_current.json',JSON.stringify({
+  dl('seat_session.json',JSON.stringify({
     meta:{round,exported:new Date().toISOString()},
     members:[...members.values()].map(m=>({id:m.id,name:m.name,dept:m.dept,sect:m.sect,locked:m.locked,raw:m.raw})),
     seats:[...G.seats.values()].map(s=>({seat_id:s.seat_id,row:s.row,col:s.col,barriers:[...s.barriers],walkway:[...(s.walkway||[])]})),
     assignment:Object.fromEntries(assign),
     baseline_assignment:Object.fromEntries([...members.values()].map(m=>[m.id,m.homeSeat])),
+    round,
+    history:history.map(x=>({...x})),
+    banned_seats:[...bannedSeats],
+    banned_moves:[...bannedMoves],
     cells:[...G.cellAt].map(([k,t])=>{const[r,c]=k.split(',').map(Number);return{row:r,col:c,cell_type:t};})
   },null,2));
 };
@@ -1086,6 +1130,11 @@ $('btnDemo').onclick=()=>{
   });
   const membersArr=[],assignment={};
   let memNo=1,sectNo=1;
+  // 漫畫風虛構姓名池:一眼可辨為虛構,避免與真實同仁撞名
+  const SUR='洛雷風夜星月炎凌嵐楓寒霜蒼雲翼鐵';
+  const GIV='天翔流火疾風千羽星河月影雷鳴烈陽霜華飛雪破軍蒼狼銀牙九淵無極玄冥赤瞳';
+  const cname=()=>SUR[Math.floor(rand()*SUR.length)]
+    +GIV.substr(Math.floor(rand()*(GIV.length/2))*2,2);
   ['D1','D2'].forEach((dept,bi)=>{
     const arr=bands[bi];
     // 每 dept 固定 6 個 sect(全場 12 個),規模 1~9、總和 = 40
@@ -1102,7 +1151,8 @@ $('btnDemo').onclick=()=>{
         while(i<arr.length&&rand()<0.12)i++;        // 隨機空位
         if(i>=arr.length)break;
         const id='M'+String(memNo++).padStart(3,'0');
-        membersArr.push({id,name:id,dept,sect,raw:`${dept}|${sect}|${id}`});
+        const name=cname();
+        membersArr.push({id,name,dept,sect,raw:`${dept}|${sect}|${id}|${name}`});
         assignment[id]=arr[i++].seat_id;
       }
     });
