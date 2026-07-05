@@ -1,0 +1,1125 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SEAT BOMBER — 座位重組優化台 v2</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DotGothic16&family=Press+Start+2P&display=swap');
+  :root{
+    --bg:#14201A; --sheet:#1C2A22; --panel2:#24352B; --line:#35503F;
+    --ink:#EAF4EC; --soft:#9CC4A8;
+    --grassA:#38B764; --grassB:#2E9E55;
+    --wall:#949DA8; --wallTop:#CED6DE; --wallSh:#545C68; --wallLn:#343A44;
+    --pathA:#D8B569; --pathB:#C9A557;
+    --fence:#8B5228; --fenceHi:#C48A50;
+    --gold:#FFD447; --accent:#FF7830; --blast:#FFEE60; --ok:#5DE28A;
+    --mono:'DotGothic16',ui-monospace,monospace;
+    --sans:'DotGothic16','PingFang TC','Noto Sans TC',system-ui,sans-serif;
+    --px8:'Press Start 2P','DotGothic16',monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;border-radius:0!important}
+  html,body{height:100%}
+  body{font-family:var(--sans);color:var(--ink);background:var(--bg);
+    display:flex;flex-direction:column;overflow:hidden;image-rendering:pixelated}
+  body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:99;
+    background:repeating-linear-gradient(0deg,rgba(0,0,0,.10) 0 1px,transparent 1px 3px)}
+  /* ── 戰隊計分板 ─────────────────────── */
+  /* ── 規則手冊 modal ─────────────────── */
+  #rulesBtn{margin-left:12px}
+  #rulesOverlay{position:fixed;inset:0;background:rgba(0,0,0,.72);z-index:200;
+    display:none;align-items:center;justify-content:center;padding:20px}
+  #rulesOverlay.open{display:flex}
+  #rulesBox{background:var(--sheet);border:3px solid #000;box-shadow:8px 8px 0 #000;
+    max-width:640px;max-height:86vh;overflow-y:auto;padding:0}
+  #rulesBox .rhd{position:sticky;top:0;background:var(--panel2);border-bottom:3px solid #000;
+    padding:12px 16px;display:flex;align-items:center;justify-content:space-between}
+  #rulesBox .rhd b{font-family:var(--px8);font-size:11px;color:var(--gold);text-shadow:1px 1px 0 #000}
+  #rulesBox .rbody{padding:14px 18px;font-size:13px;line-height:1.75}
+  #rulesBox h3{font-family:var(--px8);font-size:9px;color:var(--accent);margin:16px 0 6px}
+  #rulesBox h3:first-child{margin-top:0}
+  #rulesBox p{margin-bottom:6px}
+  #rulesBox .kv{font-family:var(--mono);font-size:12px;color:var(--soft)}
+  #rulesBox .kv b{color:var(--gold)}
+  #rulesBox table{width:100%;border-collapse:collapse;font-size:12px;font-family:var(--mono);margin:4px 0 8px}
+  #rulesBox td{border:1px solid var(--line);padding:4px 7px;vertical-align:top}
+  #rulesBox td:first-child{color:var(--gold);white-space:nowrap}
+  #teambar{display:flex;gap:10px;padding:10px 18px;background:#101A14;
+    border-bottom:4px solid #000;overflow-x:auto;flex:none}
+  .team{flex:none;min-width:108px;border:2px solid #000;background:var(--panel2);
+    box-shadow:3px 3px 0 #000;cursor:pointer}
+  .team:hover{filter:brightness(1.15)}
+  .team.active{outline:3px solid var(--gold)}
+  .team .tname{font-family:var(--px8);font-size:9px;color:#101010;padding:4px 6px;
+    display:flex;justify-content:space-between;align-items:center;
+    text-shadow:0 1px 0 rgba(255,255,255,.35)}
+  .team .tname i{font-style:normal;font-family:var(--mono);font-size:11px}
+  .team .tstats{font-family:var(--mono);font-size:11px;padding:4px 6px;line-height:1.55;color:var(--ink)}
+  .team .tstats b{color:var(--gold)}
+  .team .tbar{height:6px;background:var(--bg);border-top:2px solid #000}
+  .team .tbar i{display:block;height:100%;background:var(--ok)}
+  header{display:flex;align-items:center;gap:16px;padding:10px 18px;
+    border-bottom:4px solid #000;background:var(--sheet);flex-wrap:wrap;
+    box-shadow:inset 0 -4px 0 var(--line);padding-bottom:14px}
+  header h1{font-family:var(--px8);font-size:13px;color:var(--gold);text-shadow:2px 2px 0 #000}
+  header h1 .no{font-family:var(--mono);color:var(--soft);font-size:11px;margin-left:10px;text-shadow:none}
+  #scorebar{margin-left:auto;display:flex;gap:20px;font-family:var(--mono);font-size:12px}
+  #scorebar b{font-family:var(--px8);font-size:12px;color:var(--gold);text-shadow:1px 1px 0 #000}
+  #scorebar .up{color:var(--ok)} #scorebar .dn{color:var(--accent)}
+  main{flex:1;display:flex;min-height:0}
+  #canvasWrap{flex:1;overflow:auto;position:relative;background:var(--bg);padding:26px}
+  #stage{position:relative;display:inline-block;border:4px solid #000;box-shadow:6px 6px 0 #000}
+  #floor{display:block;font-size:0}
+  .frow{display:flex}
+  .wrow{display:flex}
+  .wseg{width:46px;height:14px;flex:none}
+  .wseg.sand{background:repeating-linear-gradient(90deg,var(--pathA) 0 9px,var(--pathB) 9px 18px);
+    border-top:2px dashed rgba(0,0,0,.35);border-bottom:2px dashed rgba(0,0,0,.35);box-sizing:border-box}
+  .wseg.wall{background:var(--wall)}
+  .wseg.aisle{background:var(--pathB)}
+  #arrows{position:absolute;inset:0;pointer-events:none;overflow:visible}
+  aside{width:344px;min-width:344px;border-left:4px solid #000;background:var(--sheet);
+    overflow-y:auto;display:flex;flex-direction:column;box-shadow:inset 4px 0 0 var(--line)}
+  section.panel{border-bottom:2px solid #000;padding:12px 14px}
+  section.panel h2{font-family:var(--px8);font-size:9px;color:var(--soft);
+    text-transform:uppercase;margin-bottom:10px}
+  section.panel h2::before{content:'▸ ';color:var(--accent)}
+  /* ── tiles ─────────────────────────── */
+  .cell{width:46px;height:46px;position:relative;display:flex;align-items:center;
+    justify-content:center;cursor:default;user-select:none}
+  .cell.seat{cursor:pointer}
+  .cell.seat:hover .bomber{filter:brightness(1.25)}
+  .cell.wall{background:
+    linear-gradient(var(--wallTop) 0 7px,transparent 7px),
+    linear-gradient(0deg,var(--wallSh) 0 7px,transparent 7px),
+    var(--wall);
+    box-shadow:inset 0 0 0 1px var(--wallLn)}
+  .cell.aisle{background:var(--pathA)}
+  .cell.aisle.alt{background:var(--pathB)}
+  .cell.aisle.dash::before{content:'';position:absolute;left:21px;top:7px;width:4px;height:18px;background:var(--gold)}
+  .cell.emptyseat::before{content:'';position:absolute;inset:14px;border:2px dashed rgba(20,80,45,.55)}
+  /* 隔板(木柵欄):實體元素,柵欄柱紋理 */
+  .fence{position:absolute;z-index:1;pointer-events:none;
+    background:repeating-linear-gradient(90deg,var(--fenceHi) 0 7px,var(--fence) 7px 14px)}
+  .fence.fN{left:-1px;right:-1px;top:0;height:8px;border-bottom:2px solid #000;border-top:2px solid #000}
+  .fence.fS{left:-1px;right:-1px;bottom:0;height:8px;border-top:2px solid #000;border-bottom:2px solid #000}
+  .fence.fE,.fence.fW{top:-1px;bottom:-1px;width:8px;
+    background:repeating-linear-gradient(0deg,var(--fenceHi) 0 7px,var(--fence) 7px 14px)}
+  .fence.fE{right:0;border-left:2px solid #000;border-right:2px solid #000}
+  .fence.fW{left:0;border-right:2px solid #000;border-left:2px solid #000}
+  /* 小走道(視覺專用):pod 內兩排之間的窄通道,不佔格、不隔斷相鄰 */
+  .walk{position:absolute;z-index:0;pointer-events:none;opacity:.92;
+    background:repeating-linear-gradient(90deg,var(--pathA) 0 9px,var(--pathB) 9px 18px)}
+  .walk.wN{left:-1px;right:-1px;top:0;height:7px;border-bottom:2px dashed rgba(0,0,0,.35)}
+  .walk.wE,.walk.wW{top:-1px;bottom:-1px;width:7px;
+    background:repeating-linear-gradient(0deg,var(--pathA) 0 9px,var(--pathB) 9px 18px)}
+  .walk.wE{right:0;border-left:2px dashed rgba(0,0,0,.35)}
+  .walk.wW{left:0;border-right:2px dashed rgba(0,0,0,.35)}
+  /* 炸彈人 sprite */
+  .bomber{position:absolute;inset:3px;pointer-events:none}
+  .bomber .hood{position:absolute;left:5px;right:5px;top:3px;height:22px;
+    background:var(--hood);border:3px solid #14161A;border-radius:12px 12px 3px 3px!important}
+  .bomber .hood::before{content:'';position:absolute;top:-7px;left:50%;margin-left:-2px;
+    width:5px;height:5px;background:#14161A}
+  .bomber .face{position:absolute;left:10px;right:10px;top:15px;height:13px;
+    background:radial-gradient(circle 2.6px at 30% 45%,#14161A 95%,transparent),
+               radial-gradient(circle 2.6px at 70% 45%,#14161A 95%,transparent),#F5F5F5;
+    border:3px solid #14161A;border-top:0}
+  .bomber .shadow{position:absolute;left:9px;right:9px;bottom:1px;height:5px;
+    background:rgba(0,60,25,.4);border-radius:50%!important}
+  /* 背號(sect id)印在頭罩上 */
+  .bomber .snum{position:absolute;left:0;right:0;top:4px;text-align:center;
+    font-family:var(--mono);font-size:11px;line-height:11px;color:#fff;
+    text-shadow:1px 1px 0 #000,-1px 1px 0 #000,1px -1px 0 #000,-1px -1px 0 #000;z-index:2}
+  /* 人名(可開關) */
+  .pname{position:absolute;bottom:-2px;left:-4px;right:-4px;text-align:center;
+    font-family:var(--mono);font-size:10px;line-height:11px;color:#fff;
+    text-shadow:1px 1px 0 #000,-1px 1px 0 #000,1px -1px 0 #000,-1px -1px 0 #000;
+    z-index:2;pointer-events:none;white-space:nowrap;overflow:hidden}
+  .cell.locked .bomber::after{content:'💣';position:absolute;top:-9px;right:-7px;font-size:17px;
+    filter:drop-shadow(1px 1px 0 #000)}
+  .cell.bannedseat::after{content:'✕';position:absolute;color:var(--accent);font-size:22px;
+    font-weight:700;text-shadow:1px 1px 0 #000}
+  /* 選取高亮:隊友頭上金色▼標記+金框,非隊友整格壓暗 */
+  .cell.mate{outline:4px solid var(--gold);outline-offset:-4px;z-index:2;
+    filter:brightness(1.18)}
+  .cell.mate::after{content:'▼';position:absolute;top:-16px;left:50%;margin-left:-7px;
+    color:var(--gold);font-size:15px;font-weight:700;text-shadow:2px 2px 0 #000;z-index:3;
+    animation:bob .45s steps(2) infinite alternate}
+  @keyframes bob{from{top:-17px}to{top:-11px}}
+  .cell.mate.focus{outline-color:#FFF}
+  .cell.mate.focus::after{color:#FFF}
+  .cell.dim{filter:grayscale(.9) brightness(.42)}
+  .cell.sel{outline:3px solid var(--blast);outline-offset:-3px;animation:blink .6s steps(2) infinite}
+  .cell.hot{outline:3px solid #FFF;outline-offset:-3px;z-index:2}
+  @keyframes blink{50%{outline-color:transparent}}
+  /* ── controls ──────────────────────── */
+  button{font-family:var(--sans);font-size:12px;border:2px solid #000;background:var(--panel2);
+    color:var(--ink);padding:6px 12px;cursor:pointer;box-shadow:3px 3px 0 #000}
+  button:hover{background:#2E4436}
+  button:active{transform:translate(3px,3px);box-shadow:none}
+  button.primary{background:var(--accent);color:#fff;text-shadow:1px 1px 0 rgba(0,0,0,.5)}
+  button.primary:hover{background:#FF8D50}
+  button:disabled{opacity:.4;cursor:not-allowed}
+  button:focus-visible,.cell:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
+  .row{display:flex;gap:10px;align-items:center;margin-bottom:10px;flex-wrap:wrap}
+  label.param{font-family:var(--mono);font-size:12px;display:flex;justify-content:space-between;
+    align-items:center;gap:8px;margin-bottom:7px}
+  label.param input{width:64px;font-family:var(--mono);font-size:12px;padding:3px 5px;
+    border:2px solid #000;background:var(--bg);color:var(--gold);text-align:right;
+    box-shadow:inset 2px 2px 0 rgba(0,0,0,.5)}
+  .mode-toggle{display:flex;border:2px solid #000;box-shadow:3px 3px 0 #000}
+  .mode-toggle button{border:0;box-shadow:none;flex:1;padding:6px 4px}
+  .mode-toggle button:active{transform:none}
+  .mode-toggle button.on{background:var(--accent);color:#fff}
+  /* ── sect 資訊卡 ────────────────────── */
+  #sectinfo{font-family:var(--mono);font-size:12px}
+  #sectinfo .hd{display:flex;align-items:center;gap:8px;margin-bottom:8px;font-size:13px}
+  #sectinfo .sw{width:16px;height:16px;box-shadow:inset -3px -3px 0 rgba(0,0,0,.3),0 0 0 2px #000}
+  #sectinfo table{width:100%;border-collapse:collapse}
+  #sectinfo td{padding:3px 4px;border-bottom:1px solid var(--line)}
+  #sectinfo td:last-child{text-align:right;color:var(--gold)}
+  #sectinfo .bar{height:8px;background:var(--bg);border:1px solid #000;margin-top:2px}
+  #sectinfo .bar i{display:block;height:100%;background:var(--ok)}
+  .lg{display:flex;align-items:center;gap:7px;font-family:var(--mono);font-size:12px;padding:4px 4px;cursor:pointer}
+  .lg:hover{background:var(--panel2)}
+  .sw{width:14px;height:14px;flex:none;box-shadow:inset -2px -2px 0 rgba(0,0,0,.3),inset 2px 2px 0 rgba(255,255,255,.3),0 0 0 1px #000}
+  .lg .st{margin-left:auto;color:var(--soft)}
+  .lg button{padding:1px 7px;font-size:11px;box-shadow:2px 2px 0 #000}
+  .mv{border:2px solid #000;border-left:6px solid var(--accent);padding:8px 10px;
+    margin-bottom:9px;font-size:12px;background:var(--panel2);box-shadow:3px 3px 0 #000}
+  .mv .d{font-family:var(--mono);font-size:11px;color:var(--soft);margin:3px 0}
+  .mv .d b{color:var(--ok)}
+  .mv .acts{display:flex;gap:8px;margin-top:6px}
+  .mv .acts button{padding:3px 10px;font-size:11px;box-shadow:2px 2px 0 #000}
+  .mv.done{opacity:.45;border-left-color:var(--ok)}
+  #log{font-family:var(--mono);font-size:11px;color:var(--soft);white-space:pre-wrap;
+    max-height:110px;overflow-y:auto;line-height:1.6}
+  #tooltip{position:fixed;background:#000;color:var(--ink);font-family:var(--mono);font-size:12px;
+    padding:6px 9px;border:2px solid var(--gold);pointer-events:none;z-index:100;display:none;
+    white-space:pre;line-height:1.6}
+  #dropzone{border:2px dashed var(--soft);padding:12px;text-align:center;font-size:12px;
+    color:var(--soft);cursor:pointer;margin-bottom:10px}
+  #dropzone:hover{border-color:var(--gold);color:var(--gold)}
+  @media (prefers-reduced-motion:reduce){.cell.sel{animation:none}.cell.mate::after{animation:none}}
+  @media (max-width:860px){
+    main{flex-direction:column}
+    aside{width:100%;min-width:0;border-left:0;border-top:4px solid #000;max-height:46vh}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>💣 SEAT BOMBER<span class="no">SEAT-OPT-TASK-001 v0.2 · Phase 4</span></h1>
+  <div id="scorebar">
+    <span>ROUND <b id="sRound">0</b></span>
+    <span>R0 基準 <b id="sBase">—</b></span>
+    <span>目前 <b id="sCur">—</b> <span id="sDelta"></span></span>
+    <span>已搬(vs R0) <b id="sMoved">0</b> 人</span>
+  </div>
+  <button id="rulesBtn">📖 規則</button>
+</header>
+<div id="rulesOverlay">
+  <div id="rulesBox">
+    <div class="rhd"><b>SEAT BOMBER 遊戲手冊</b><button id="rulesClose">✕ 關閉</button></div>
+    <div class="rbody">
+
+      <h3>🎯 遊戲目標</h3>
+      <p>你是樓面指揮官。棋盤上每個炸彈人是一位 member,頭罩顏色 = 所屬 sect(戰隊),戰隊隸屬於 dept。你的任務是重排座位,達成三件事(依優先序):</p>
+      <p class="kv">① 每個戰隊聚成<b>一整塊</b>,隊員彼此相鄰、轉頭就能討論<br>
+      ② <b>搬動的人數越少越好</b> — 每搬一人都要付出代價<br>
+      ③ 同 dept 的戰隊互相靠攏(最低優先:絕不會純粹為了這一項而搬人,規則保證 λ &gt; w4)</p>
+
+      <h3>🗺️ 地圖元素</h3>
+      <table>
+        <tr><td>草地</td><td>座位區。炸彈人站的位置</td></tr>
+        <tr><td>灰石牆</td><td>厚牆,佔一格。不可坐、完全阻隔相鄰</td></tr>
+        <tr><td>沙土路</td><td>走道,佔一格。不可坐;走道兩側的人<b>不算相鄰</b>(隔著走道沒法討論)</td></tr>
+        <tr><td>木柵欄</td><td>隔板,不佔格,立在兩格之間。兩側都能坐,但柵欄兩側<b>不算相鄰</b></td></tr>
+        <tr><td>虛線框</td><td>空位,可以搬人進來</td></tr>
+        <tr><td>💣 炸彈</td><td>鎖定標記 — 這個人已佈防,任何優化都不會動他</td></tr>
+        <tr><td>爆風光束</td><td>本輪的移動建議,從現位炸向目標位</td></tr>
+      </table>
+
+      <h3>🧮 計分規則</h3>
+      <p>總分 = 各戰隊內聚分(<b>人數加權</b>)+ 各 dept 聚攏分 − λ × 已搬人數</p>
+      <p class="kv">量級直覺:把一個孤點併回主區塊 ≈ +w1 再加緊密度紅利;dept 合併一次 = +w4。λ = 0.5 表示「一筆移動至少要值半次區塊合併才划算」。</p>
+      <table>
+        <tr><td>w1 連通(0.5)</td><td>戰隊被切成越少塊越高分。牆、走道、柵欄都會切斷</td></tr>
+        <tr><td>w2 緊密(0.35)</td><td>每人四鄰中同隊的比例。懲罰「連著但拉成長蛇」的排法</td></tr>
+        <tr><td>w3 距離(0.15)</td><td>隊內平均距離,只做微調 tiebreak</td></tr>
+        <tr><td>w4 dept(0.15)</td><td>同 dept 各戰隊連成大區的加分</td></tr>
+        <tr><td>λ 搬動成本(0.5)</td><td>每搬一人扣的分。λ 越大方案越保守。<b>位移永遠對比最初座位</b>,搬回原位會退款</td></tr>
+      </table>
+      <p class="kv">戰隊計分板(最上排)顯示每隊人數、已搬、塊數、內聚血條。血條全滿 = 完美聚合。</p>
+
+      <h3>🕹️ 操作模式</h3>
+      <table>
+        <tr><td>👆 選取</td><td>點一個人 → 全隊金框高亮、其他隊變暗,側欄顯示該隊詳細狀態。點戰隊卡同效</td></tr>
+        <tr><td>💣 鎖定</td><td>點人放炸彈(鎖定/解鎖);點空位標記禁用。戰隊卡上「🔒 鎖隊」可一鍵鎖整隊</td></tr>
+        <tr><td>⇄ 交換</td><td>手動搬人:點兩個座位交換,或點人再點空位搬過去</td></tr>
+      </table>
+
+      <h3>🔄 回合流程</h3>
+      <p>① 按「▶ 跑一輪」→ AI 用貪婪搜尋找出最多 N 筆加分移動(每筆互不相依)<br>
+      ② 逐條「✓ 接受 / ✕ 否決」— 否決會變成永久禁令,之後不再提同樣的移動<br>
+      ③ 或勾「⚡ 自動優化」直接全部套用,事後再手動微調<br>
+      ④ 找不到加分移動 = 收斂。可以調大候選半徑、調低 λ,或手動做一步「先變差」的搬遷幫 AI 跳出局部最優</p>
+
+      <h3>💾 存檔槽</h3>
+      <p>每輪開始前自動存檔,也可手動存。讀取任一槽 = 整個世界回到那個時間點(座位、鎖定、禁令全還原),之後從那裡開新分支。最多 30 槽,重新整理頁面會清空 — 要長期保存請「匯出現況」成 JSON。</p>
+
+      <h3>🏆 勝利條件</h3>
+      <p>沒有絕對的勝利畫面 — 當「所有戰隊血條夠滿」而「已搬人數你付得起」,按「匯出 moves」拿到搬遷清單,遊戲結束,現實世界的搬家開始。</p>
+
+    </div>
+  </div>
+</div>
+<div id="teambar"></div>
+
+<div id="teambar"></div>
+
+<main>
+  <div id="canvasWrap"><div id="stage"><div id="floor" role="grid"></div><svg id="arrows"></svg></div></div>
+
+  <aside>
+    <section class="panel">
+      <h2>載入 / Load</h2>
+      <div id="dropzone">點擊或拖入 grid.json(member/seat 模型)</div>
+      <input type="file" id="fileInput" accept=".json" style="display:none">
+      <div class="row">
+        <button id="btnDemo">載入示範樓面</button>
+        <button id="btnExportGrid">匯出現況</button>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>互動模式 / Mode</h2>
+      <div class="mode-toggle" role="radiogroup">
+        <button id="modeSelect" class="on">👆 選取</button>
+        <button id="modeLock">💣 鎖定</button>
+        <button id="modeSwap">⇄ 交換</button>
+        <button id="modeTerrain">🔧 地形</button>
+      </div>
+      <p style="font-size:11px;color:var(--soft);margin-top:6px" id="modeHint">
+        點一個人 → 高亮同 sect 全員並顯示課別狀態。點空白處取消。
+      </p>
+      <label style="display:flex;align-items:center;gap:8px;font-family:var(--mono);font-size:12px;margin-top:8px;cursor:pointer">
+        <input type="checkbox" id="pNames" style="width:16px;height:16px;accent-color:#FF7830">
+        顯示人名(頭罩背號 = sect 編號)
+      </label>
+    </section>
+
+    <section class="panel">
+      <h2>課別狀態 / Sect Info</h2>
+      <div id="sectinfo"><p style="font-size:12px;color:var(--soft)">尚未選取。在選取模式下點任一成員。</p></div>
+    </section>
+
+    <section class="panel">
+      <h2>參數 / Parameters</h2>
+      <label class="param">λ 每人搬動成本 <input type="number" id="pLam" value="0.5" step="0.1" min="0"></label>
+      <label class="param">w1 sect連通 <input type="number" id="pW1" value="0.5" step="0.05" min="0"></label>
+      <label class="param">w2 鄰居同課 <input type="number" id="pW2" value="0.35" step="0.05" min="0"></label>
+      <label class="param">w3 距離 <input type="number" id="pW3" value="0.15" step="0.05" min="0"></label>
+      <label class="param">w4 dept連通 <input type="number" id="pW4" value="0.15" step="0.05" min="0"></label>
+      <label class="param">每輪最多移動 <input type="number" id="pMax" value="5" step="1" min="1" max="20"></label>
+      <label class="param">候選半徑(格) <input type="number" id="pRad" value="8" step="1" min="2"></label>
+    </section>
+
+    <section class="panel">
+      <h2>回合 / Round</h2>
+      <div class="row">
+        <button class="primary" id="btnRun">▶ 跑一輪</button>
+        <button id="btnUndo">↩ 復原</button>
+        <button id="btnExportMoves">匯出 moves</button>
+      </div>
+      <label style="display:flex;align-items:center;gap:8px;font-family:var(--mono);font-size:12px;margin-bottom:8px;cursor:pointer">
+        <input type="checkbox" id="pAuto" style="width:16px;height:16px;accent-color:#FF7830">
+        ⚡ 自動優化(本輪建議直接套用,事後可手動調整)
+      </label>
+      <div id="proposals"><p style="font-size:12px;color:var(--soft)">載入資料後按「跑一輪」。</p></div>
+    </section>
+
+    <section class="panel">
+      <h2>存檔槽 / Save States</h2>
+      <div class="row"><button id="btnSave">💾 手動存檔</button></div>
+      <div id="checkpoints" style="font-size:11px;color:var(--soft)">—</div>
+    </section>
+
+    <section class="panel">
+      <h2>課別清單 / Sections</h2>
+      <div id="legend" style="font-size:11px;color:var(--soft)">—</div>
+    </section>
+
+    <section class="panel"><h2>紀錄 / Log</h2><div id="log"></div></section>
+  </aside>
+</main>
+<div id="tooltip"></div>
+
+<script>
+'use strict';
+/* ══════ state ══════ */
+let G=null;                 // {rows,cols,cellAt:Map key->'WALL'|'AISLE',seats:Map id->seat,seatByPos:Map key->seatId,adj:Map seatId->[seatId],diag}
+let members=new Map();      // id -> {id,name,dept,sect,locked,homeSeat}
+let assign=new Map(), occ=new Map();   // memberId<->seatId
+let bannedSeats=new Set(), bannedMoves=new Set();
+let history=[], proposals=[], checkpoints=[];
+let baseScore=null, round=0, mode='select', swapSel=null, selectedSect=null, selectedMember=null, rowY=[];
+
+const $=id=>document.getElementById(id);
+const key=(r,c)=>r+','+c;
+const P=()=>({lam:+$('pLam').value,w1:+$('pW1').value,w2:+$('pW2').value,
+  w3:+$('pW3').value,w4:+$('pW4').value,maxMv:+$('pMax').value,rad:+$('pRad').value});
+const log=m=>{const el=$('log');el.textContent=(new Date()).toTimeString().slice(0,8)+'  '+m+'\n'+el.textContent;};
+const OPP={N:'S',S:'N',E:'W',W:'E'};
+const DIR={N:[-1,0],S:[1,0],E:[0,1],W:[0,-1]};
+
+/* ══════ loading ══════ */
+function loadGrid(json){
+  const seats=new Map(), seatByPos=new Map(), cellAt=new Map();
+  let maxR=0,maxC=0;
+  for(const s of json.seats){
+    seats.set(s.seat_id,{...s,barriers:new Set(s.barriers||[]),walkway:new Set(s.walkway||[])});
+    seatByPos.set(key(s.row,s.col),s.seat_id);
+    maxR=Math.max(maxR,s.row); maxC=Math.max(maxC,s.col);
+  }
+  for(const c of (json.cells||[])){
+    cellAt.set(key(c.row,c.col),c.cell_type);
+    maxR=Math.max(maxR,c.row); maxC=Math.max(maxC,c.col);
+  }
+  // 隔板鏡像補齊
+  for(const s of seats.values())
+    for(const b of [...s.barriers]){
+      const [dr,dc]=DIR[b]; const nId=seatByPos.get(key(s.row+dr,s.col+dc));
+      if(nId) seats.get(nId).barriers.add(OPP[b]);
+    }
+  G={rows:maxR+1,cols:maxC+1,cellAt,seats,seatByPos,adj:null,diag:maxR+maxC+2};
+  G.adj=buildAdj();
+  members.clear();assign.clear();occ.clear();
+  bannedSeats.clear();bannedMoves.clear();history=[];proposals=[];round=0;
+  checkpoints=[];
+  selectedSect=null;selectedMember=null;
+  for(const m of json.members){
+    const sid=json.assignment[m.id];
+    if(!sid||!seats.has(sid)){log('警告:'+m.id+' 沒有有效座位,略過');continue;}
+    // Round 0 基準:優先用檔案內的 baseline_assignment(跨檔續玩),否則以本次載入為 R0
+    const home=(json.baseline_assignment&&seats.has(json.baseline_assignment[m.id]))
+      ?json.baseline_assignment[m.id]:sid;
+    members.set(m.id,{...m,locked:!!m.locked,homeSeat:home});
+    assign.set(m.id,sid); occ.set(sid,m.id);
+  }
+  // 基準分 = R0 佈局的分數(不是載入當下的佈局)
+  const asg0=new Map([...members.values()].map(m=>[m.id,m.homeSeat]));
+  baseScore=totalScore(asg0);
+  snapshot('初始狀態');
+  log(`載入完成:${members.size} 人、${seats.size} 座位`);
+  renderAll();
+}
+
+/* ══════ terrain editing ══════ */
+function buildAdj(){
+  const adj=new Map();
+  for(const s of G.seats.values()){
+    const out=[];
+    for(const [b,[dr,dc]] of Object.entries(DIR)){
+      if(s.barriers.has(b)) continue;
+      const nId=G.seatByPos.get(key(s.row+dr,s.col+dc));
+      if(nId) out.push(nId);
+    }
+    adj.set(s.seat_id,out);
+  }
+  return adj;
+}
+function terrainChanged(msg){
+  G.adj=buildAdj();
+  const asg0=new Map([...members.values()].map(m=>[m.id,m.homeSeat]));
+  baseScore=totalScore(asg0);
+  proposals=[];                       // 地形變了,舊提案作廢
+  log(msg+'(鄰接與 R0 基準分已重算)');
+  renderAll();
+}
+function toggleBarrier(sid,side){
+  const s=G.seats.get(sid);
+  const [dr,dc]=DIR[side];
+  const nId=G.seatByPos.get(key(s.row+dr,s.col+dc));
+  const has=s.barriers.has(side);
+  if(has){s.barriers.delete(side);if(nId)G.seats.get(nId).barriers.delete(OPP[side]);}
+  else{s.barriers.add(side);if(nId)G.seats.get(nId).barriers.add(OPP[side]);}
+  terrainChanged(`${has?'移除':'加上'}隔板:${sid} 的 ${side} 側`);
+}
+function seatToAisle(sid){
+  if(occ.has(sid)){log('⚠ 該座位有人,先移走才能改成走道');return;}
+  if([...members.values()].some(m=>m.homeSeat===sid)){
+    log('⚠ 該座位是某成員的 R0 原始座位,不能改走道(會破壞基準)');return;}
+  const s=G.seats.get(sid);
+  G.seats.delete(sid);G.seatByPos.delete(key(s.row,s.col));
+  bannedSeats.delete(sid);
+  G.cellAt.set(key(s.row,s.col),'AISLE');
+  terrainChanged(`座位 ${sid} → 走道`);
+}
+function aisleToSeat(r,c){
+  G.cellAt.delete(key(r,c));
+  let n=1,sid;do{sid='T'+String(n++).padStart(3,'0');}while(G.seats.has(sid));
+  G.seats.set(sid,{seat_id:sid,row:r,col:c,barriers:new Set()});
+  G.seatByPos.set(key(r,c),sid);
+  terrainChanged(`走道 (${r},${c}) → 座位 ${sid}`);
+}
+
+/* ══════ scoring ══════ */
+const posOf=sid=>{const s=G.seats.get(sid);return [s.row,s.col];};
+function membersOf(sect,byDept){
+  const out=[];
+  for(const m of members.values())
+    if(byDept? m.dept===sect : m.sect===sect) out.push(m.id);
+  return out;
+}
+function componentsOf(seatIds){
+  const set=new Set(seatIds),seen=new Set();let comp=0;
+  for(const s of seatIds){
+    if(seen.has(s))continue;
+    comp++;const q=[s];seen.add(s);
+    while(q.length){const cur=q.pop();
+      for(const n of G.adj.get(cur)) if(set.has(n)&&!seen.has(n)){seen.add(n);q.push(n);}}
+  }
+  return comp;
+}
+function sectStats(sect,asg){
+  asg=asg||assign;
+  const ids=membersOf(sect,false);
+  const cells=ids.map(id=>asg.get(id));
+  const n=ids.length;
+  if(!n) return null;
+  const comp=componentsOf(cells);
+  // 鄰居同課比例
+  const cellSet=new Set(cells);
+  let ratio=0,cnt=0;
+  for(const c of cells){
+    const nbrs=G.adj.get(c);
+    if(!nbrs.length)continue;
+    ratio+=nbrs.filter(x=>cellSet.has(x)).length/nbrs.length;cnt++;
+  }
+  ratio=cnt?ratio/cnt:1;
+  // 平均距離
+  let avg=0;
+  if(n>1){let sum=0,m=0;const pts=cells.map(posOf);
+    for(let i=0;i<n;i++)for(let j=i+1;j<n;j++){
+      sum+=Math.abs(pts[i][0]-pts[j][0])+Math.abs(pts[i][1]-pts[j][1]);m++;}
+    avg=sum/m;}
+  const moved=ids.filter(id=>asg.get(id)!==members.get(id).homeSeat).length;
+  return {n,comp,ratio,avg,moved,cells};
+}
+function sectScore(sect,asg,p){
+  const st=sectStats(sect,asg); if(!st)return 0;
+  const conn=st.n>1?1-(st.comp-1)/st.n:1;
+  const dist=st.n>1?Math.max(0,1-st.avg/G.diag):1;
+  // 人數加權:合併一次區塊 = +w1、每提升一人的鄰居比例 = +w2,與 λ 同量級
+  return st.n*(p.w1*conn+p.w2*st.ratio+p.w3*dist);
+}
+function deptScore(dept,asg,p){
+  const ids=membersOf(dept,true); if(!ids.length)return 0;
+  const comp=componentsOf(ids.map(id=>(asg||assign).get(id)));
+  // 人數加權後,dept 合併一次區塊 = +w4,仍 < λ,優先序不變
+  return p.w4*(ids.length-comp+1);
+}
+function movedCount(asg){
+  let n=0;for(const [id,s] of asg) if(s!==members.get(id).homeSeat)n++;return n;
+}
+const allSects=()=> [...new Set([...members.values()].map(m=>m.sect))];
+const allDepts=()=> [...new Set([...members.values()].map(m=>m.dept))];
+function totalScore(asg){
+  asg=asg||assign;const p=P();let s=0;
+  for(const x of allSects())s+=sectScore(x,asg,p);
+  for(const x of allDepts())s+=deptScore(x,asg,p);
+  return s-p.lam*movedCount(asg);
+}
+
+/* ══════ greedy round ══════ */
+function emptySeats(o){
+  const out=[];
+  for(const sid of G.seats.keys())
+    if(!o.has(sid)&&!bannedSeats.has(sid))out.push(sid);
+  return out;
+}
+function centroidOf(cells){
+  let r=0,c=0;for(const s of cells){const[a,b]=posOf(s);r+=a;c+=b;}
+  return [r/cells.length,c/cells.length];
+}
+function proposeRound(){
+  const p=P();
+  const wAsg=new Map(assign),wOcc=new Map(occ);
+  const frozen=new Set();const out=[];
+  let curTotal=totalScore(wAsg);
+  for(let step=0;step<p.maxMv;step++){
+    const cent={};
+    for(const s of allSects())cent[s]=centroidOf(membersOf(s,false).map(id=>wAsg.get(id)));
+    const empties=emptySeats(wOcc);
+    let best=null;
+    for(const m of members.values()){
+      if(m.locked||frozen.has(m.id))continue;
+      const from=wAsg.get(m.id);
+      const[cr,cc]=cent[m.sect];
+      const near=sid=>{const[r,c]=posOf(sid);
+        return Math.max(Math.abs(r-cr),Math.abs(c-cc))<=p.rad;};
+      for(const ek of empties){
+        if(!near(ek)||frozen.has('C:'+ek))continue;
+        if(bannedMoves.has(m.id+'→'+ek))continue;
+        const d=tryDelta(wAsg,wOcc,m.id,ek,null,p);
+        if(d>1e-9&&(!best||d>best.d))best={d,pid:m.id,from,to:ek,pid2:null};
+      }
+      for(const m2 of members.values()){
+        if(m2.id===m.id||m2.locked||frozen.has(m2.id))continue;
+        if(m2.sect===m.sect)continue;
+        const to=wAsg.get(m2.id);
+        if(!near(to)||frozen.has('C:'+to))continue;
+        if(bannedMoves.has(m.id+'→'+to)||bannedMoves.has(m2.id+'→'+from))continue;
+        const d=tryDelta(wAsg,wOcc,m.id,to,m2.id,p);
+        if(d>1e-9&&(!best||d>best.d))best={d,pid:m.id,from,to,pid2:m2.id};
+      }
+    }
+    if(!best)break;
+    applyMove(wAsg,wOcc,best);
+    curTotal+=best.d;
+    frozen.add(best.pid);frozen.add('C:'+best.from);frozen.add('C:'+best.to);
+    if(best.pid2)frozen.add(best.pid2);
+    out.push({...best,status:'pending'});
+  }
+  return out;
+}
+function tryDelta(asg,o,pid,to,pid2,p){
+  const m=members.get(pid),from=asg.get(pid);
+  const sects=new Set([m.sect]),depts=new Set([m.dept]);
+  if(pid2){sects.add(members.get(pid2).sect);depts.add(members.get(pid2).dept);}
+  let before=0;
+  for(const s of sects)before+=sectScore(s,asg,p);
+  for(const d of depts)before+=deptScore(d,asg,p);
+  const mB=movedCount(asg);
+  applyMove(asg,o,{pid,from,to,pid2});
+  let after=0;
+  for(const s of sects)after+=sectScore(s,asg,p);
+  for(const d of depts)after+=deptScore(d,asg,p);
+  const mA=movedCount(asg);
+  applyMove(asg,o,{pid,from:to,to:from,pid2});
+  return (after-before)-p.lam*(mA-mB);
+}
+function applyMove(asg,o,{pid,from,to,pid2}){
+  if(pid2){asg.set(pid2,from);o.set(from,pid2);}
+  else o.delete(from);
+  asg.set(pid,to);o.set(to,pid);
+}
+
+/* ══════ save states ══════ */
+function snapshot(label){
+  checkpoints.push({
+    label, round,
+    time:new Date().toTimeString().slice(0,8),
+    assign:new Map(assign),
+    locked:new Map([...members.values()].map(m=>[m.id,m.locked])),
+    bannedSeats:new Set(bannedSeats),
+    bannedMoves:new Set(bannedMoves),
+    history:history.map(h=>({...h})),
+    score:totalScore(), moved:movedCount(assign)
+  });
+  if(checkpoints.length>30)checkpoints.shift();  // 最多 30 槽
+  renderCheckpoints();
+}
+function restoreCheckpoint(i){
+  const cp=checkpoints[i];if(!cp)return;
+  assign=new Map(cp.assign);
+  occ=new Map();for(const[id,s]of assign)occ.set(s,id);
+  for(const m of members.values())m.locked=cp.locked.get(m.id)||false;
+  bannedSeats=new Set(cp.bannedSeats);
+  bannedMoves=new Set(cp.bannedMoves);
+  history=cp.history.map(h=>({...h}));
+  proposals=[];round=cp.round;swapSel=null;
+  log(`已讀取存檔 #${i+1}(${cp.label}),之後的回合從這裡重新出發`);
+  renderAll();
+}
+function renderCheckpoints(){
+  const el=$('checkpoints');if(!el)return;
+  if(!checkpoints.length){el.textContent='—';return;}
+  el.innerHTML='';
+  checkpoints.forEach((cp,i)=>{
+    const row=document.createElement('div');row.className='lg';
+    row.innerHTML=`<span style="color:var(--gold)">#${i+1}</span>
+      <span>${cp.label}</span>
+      <span class="st">${cp.score.toFixed(2)}分/搬${cp.moved} · ${cp.time}</span>`;
+    const btn=document.createElement('button');btn.textContent='讀取';
+    btn.onclick=()=>restoreCheckpoint(i);
+    row.appendChild(btn);el.appendChild(row);
+  });
+}
+$('btnSave').onclick=()=>{
+  if(!G)return;
+  snapshot(`手動存檔(R${round})`);
+  log('已手動存檔');
+};
+
+/* ══════ round UI ══════ */
+const runLabel=()=> $('pAuto').checked?'⚡ 自動優化一輪':'▶ 跑一輪';
+$('pAuto').onchange=()=>{
+  $('btnRun').textContent=runLabel();
+  log($('pAuto').checked
+    ?'已開啟自動優化 — 按「⚡ 自動優化一輪」執行,本輪建議會直接套用'
+    :'已關閉自動優化 — 回到逐條裁決模式');
+};
+$('btnRun').onclick=()=>{
+  if(!G)return log('請先載入資料');
+  snapshot(`Round ${round+1} 開始前`);
+  $('btnRun').disabled=true;$('btnRun').textContent='計算中…';
+  setTimeout(()=>{
+    proposals=proposeRound();round++;
+    if(!proposals.length)log(`Round ${round}:無正分移動 — 已收斂或約束過緊`);
+    else if($('pAuto').checked){
+      // 自動優化:依序直接套用(存檔槽已在本輪開始前建立,可整輪 revert)
+      for(const m of proposals){
+        applyMove(assign,occ,m);m.status='accepted';
+        history.push({pid:m.pid,from:m.from,to:m.to,pid2:m.pid2||''});
+      }
+      log(`Round ${round}:⚡ 自動套用 ${proposals.length} 筆移動;不滿意可讀取存檔槽整輪回溯,或用交換/復原微調`);
+    }
+    else log(`Round ${round}:提出 ${proposals.length} 筆,請逐條裁決`);
+    renderAll();
+    $('btnRun').disabled=false;$('btnRun').textContent=runLabel();
+  },30);
+};
+function acceptMove(i){
+  const m=proposals[i];if(m.status!=='pending')return;
+  if(assign.get(m.pid)!==m.from||(m.pid2&&assign.get(m.pid2)!==m.to)||(!m.pid2&&occ.has(m.to))){
+    m.status='stale';log('該筆與先前裁決衝突,已作廢');renderAll();return;}
+  applyMove(assign,occ,m);m.status='accepted';
+  history.push({pid:m.pid,from:m.from,to:m.to,pid2:m.pid2||''});
+  log(`接受:${label(m)}`);renderAll();
+}
+function rejectMove(i){
+  const m=proposals[i];if(m.status!=='pending')return;
+  bannedMoves.add(m.pid+'→'+m.to);
+  if(m.pid2)bannedMoves.add(m.pid2+'→'+m.from);
+  m.status='rejected';
+  log(`否決:${label(m)}(已加入禁止約束)`);renderAll();
+}
+const label=m=>m.pid2?`${m.pid} ⇄ ${m.pid2}`:`${m.pid} → ${m.to}`;
+$('btnUndo').onclick=()=>{
+  const m=history.pop();if(!m)return;
+  applyMove(assign,occ,{pid:m.pid,from:m.to,to:m.from,pid2:m.pid2||null});
+  log('已復原:'+m.pid);renderAll();
+};
+
+/* ══════ render ══════ */
+function sectColorMap(){
+  const depts=allDepts().sort();const map={};
+  depts.forEach((d,i)=>{
+    const hue=(i*360/Math.max(depts.length,1)+205)%360;
+    const secs=[...new Set([...members.values()].filter(m=>m.dept===d).map(m=>m.sect))].sort();
+    secs.forEach((s,j)=>{
+      // 同 dept 色系:色相小幅偏移 + 飽和/明度循環,可容納十幾個 sect 仍可辨識
+      const h=(hue+(j%5)*9)%360, sa=72+(j%3)*12, li=38+(j%4)*11;
+      map[s]=`hsl(${h} ${sa}% ${li}%)`;
+    });
+  });
+  return map;
+}
+function renderAll(){
+  if(!G)return;
+  const colors=sectColorMap();
+  const floor=$('floor');
+  floor.innerHTML='';
+  rowY=[];let curY=0;
+  let rowDiv=null;
+  for(let r=0;r<G.rows;r++){
+  rowY[r]=curY;curY+=46;
+  rowDiv=document.createElement('div');rowDiv.className='frow';
+  floor.appendChild(rowDiv);
+  for(let c=0;c<G.cols;c++){
+    const k=key(r,c);
+    const div=document.createElement('div');
+    div.className='cell';div.dataset.k=k;
+    const t=G.cellAt.get(k);
+    if(t==='WALL'){div.classList.add('wall');rowDiv.appendChild(div);continue;}
+    if(t==='AISLE'){
+      div.classList.add('aisle');
+      if(r%2===1)div.classList.add('alt');
+      if(r%2===0)div.classList.add('dash');
+      div.onclick=()=>{if(mode==='terrain')aisleToSeat(r,c);};
+      rowDiv.appendChild(div);continue;
+    }
+    const sid=G.seatByPos.get(k);
+    if(!sid){div.style.background='var(--bg)';rowDiv.appendChild(div);continue;}
+    // 草地
+    div.classList.add('seat');div.tabIndex=0;
+    div.style.background=(r+c)%2===0?'var(--grassA)':'var(--grassB)';
+    // 隔板(木柵欄)
+    const s=G.seats.get(sid);
+    for(const b of s.barriers){
+      const f=document.createElement('div');
+      f.className='fence f'+b;
+      div.appendChild(f);
+    }
+    // 小走道(視覺):pod 內窄通道
+    if(s.walkway)for(const w of s.walkway){
+      if(w==='S')continue;   // S 向改由列間實體窄列呈現
+      const wd=document.createElement('div');
+      wd.className='walk w'+w;
+      div.appendChild(wd);
+    }
+    const pid=occ.get(sid);
+    if(pid){
+      const m=members.get(pid);
+      const b=document.createElement('div');b.className='bomber';
+      b.style.setProperty('--hood',colors[m.sect]);
+      // sect id 格式如 "1-0A":≤4 字顯示完整 id;更長才取破折號後綴
+      const sidStr=String(m.sect);
+      const snum=sidStr.length<=4?sidStr:(sidStr.split('-').pop()||sidStr.slice(-3));
+      const snumSize=snum.length>3?'9px':'11px';
+      b.innerHTML=`<div class="shadow"></div><div class="hood"></div><div class="face"></div><div class="snum" style="font-size:${snumSize}">${snum}</div>`;
+      div.appendChild(b);
+      if($('pNames').checked){
+        const nm=document.createElement('div');nm.className='pname';
+        nm.textContent=m.name||m.id;div.appendChild(nm);
+      }
+      if(m.locked)div.classList.add('locked');
+      if(selectedSect){
+        if(m.sect===selectedSect){div.classList.add('mate');
+          if(pid===selectedMember)div.classList.add('focus');}
+        else div.classList.add('dim');
+      }
+    }else{
+      div.classList.add('emptyseat');
+      if(bannedSeats.has(sid))div.classList.add('bannedseat');
+    }
+    if(swapSel===sid)div.classList.add('sel');
+    div.onclick=e=>cellClick(sid,e);
+    div.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();cellClick(sid);}};
+    div.onmousemove=e=>showTip(e,sid);
+    div.onmouseleave=()=>$('tooltip').style.display='none';
+    rowDiv.appendChild(div);
+  }
+  // 本列有小走道(S)→ 插入 14px 實體窄列,格子不縮水
+  const hasWalk=[...G.seats.values()].some(s=>s.row===r&&s.walkway&&s.walkway.has('S'));
+  if(hasWalk){
+    const wr=document.createElement('div');wr.className='wrow';
+    for(let c=0;c<G.cols;c++){
+      const seg=document.createElement('div');seg.className='wseg';
+      const sAbove=G.seatByPos.get(key(r,c));
+      const t2=G.cellAt.get(key(r,c));
+      if(sAbove&&G.seats.get(sAbove).walkway.has('S'))seg.classList.add('sand');
+      else if(t2==='WALL')seg.classList.add('wall');
+      else if(t2==='AISLE')seg.classList.add('aisle');
+      wr.appendChild(seg);
+    }
+    floor.appendChild(wr);curY+=14;
+  }
+  }
+  drawArrows();renderScore();renderLegend(colors);renderProposals();renderSectInfo(colors);renderTeamBar(colors);
+}
+function showTip(e,sid){
+  const t=$('tooltip');const pid=occ.get(sid);
+  let s=`座位 ${sid}`;
+  if(pid){const m=members.get(pid);
+    s+=`\n${m.name||m.id}\ndept ${m.dept} / sect ${m.sect}`;
+    if(m.raw)s+=`\nraw: ${m.raw}`;
+    if(assign.get(pid)!==m.homeSeat)s+=`\n(原座位 ${m.homeSeat})`;
+    if(m.locked)s+='\n💣 已鎖定';
+  }else s+='\n空位'+(bannedSeats.has(sid)?'(禁用)':'');
+  t.textContent=s;t.style.display='block';
+  t.style.left=(e.clientX+14)+'px';t.style.top=(e.clientY+14)+'px';
+}
+function cellClick(sid,e){
+  if(mode==='terrain'){
+    // 點邊緣 13px 內 = 該側隔板開關;點中央 = 座位 ⇄ 走道
+    const x=e?e.offsetX:23,y=e?e.offsetY:23,M=13;
+    let side=null;
+    if(y<M)side='N';else if(y>46-M)side='S';
+    else if(x<M)side='W';else if(x>46-M)side='E';
+    if(side)toggleBarrier(sid,side);
+    else seatToAisle(sid);
+    return;
+  }
+  const pid=occ.get(sid);
+  if(mode==='select'){
+    if(pid){const m=members.get(pid);
+      if(selectedMember===pid){selectedSect=null;selectedMember=null;}
+      else{selectedSect=m.sect;selectedMember=pid;}
+    }else{selectedSect=null;selectedMember=null;}
+    renderAll();
+  }else if(mode==='lock'){
+    if(pid){const m=members.get(pid);m.locked=!m.locked;}
+    else bannedSeats.has(sid)?bannedSeats.delete(sid):bannedSeats.add(sid);
+    renderAll();
+  }else{
+    if(!swapSel){swapSel=sid;renderAll();return;}
+    if(swapSel===sid){swapSel=null;renderAll();return;}
+    const a=occ.get(swapSel),b=occ.get(sid);
+    if(a&&b){applyMove(assign,occ,{pid:a,from:swapSel,to:sid,pid2:b});
+      history.push({pid:a,from:swapSel,to:sid,pid2:b});log(`手動交換:${a} ⇄ ${b}`);}
+    else if(a&&!b){applyMove(assign,occ,{pid:a,from:swapSel,to:sid,pid2:null});
+      history.push({pid:a,from:swapSel,to:sid,pid2:''});log(`手動移動:${a} → ${sid}`);}
+    swapSel=null;renderAll();
+  }
+}
+function drawArrows(){
+  const svg=$('arrows');svg.innerHTML='';
+  svg.setAttribute('width',$('floor').offsetWidth);
+  svg.setAttribute('height',$('floor').offsetHeight);
+  const ctr=sid=>{const[r,c]=posOf(sid);return[c*46+23,(rowY[r]||r*46)+23];};
+  for(const m of proposals){
+    if(m.status!=='pending')continue;
+    const[x1,y1]=ctr(m.from),[x2,y2]=ctr(m.to);
+    // 爆風光束:L 形,橘邊黃芯
+    const seg=(xa,ya,xb,yb,w,col)=>{
+      const l=document.createElementNS('http://www.w3.org/2000/svg','line');
+      l.setAttribute('x1',xa);l.setAttribute('y1',ya);l.setAttribute('x2',xb);l.setAttribute('y2',yb);
+      l.setAttribute('stroke',col);l.setAttribute('stroke-width',w);
+      l.setAttribute('stroke-linecap','square');svg.appendChild(l);};
+    seg(x1,y1,x2,y1,8,'var(--accent)');seg(x2,y1,x2,y2,8,'var(--accent)');
+    seg(x1,y1,x2,y1,4,'var(--blast)'); seg(x2,y1,x2,y2,4,'var(--blast)');
+    const tip=document.createElementNS('http://www.w3.org/2000/svg','path');
+    const dy=y2>=y1?1:-1;
+    tip.setAttribute('d',`M${x2-7},${y2} L${x2+7},${y2} L${x2},${y2+9*dy} z`);
+    tip.setAttribute('fill','var(--blast)');tip.setAttribute('stroke','var(--accent)');
+    tip.setAttribute('stroke-width','2');svg.appendChild(tip);
+  }
+}
+function renderScore(){
+  const cur=totalScore();
+  $('sRound').textContent=round;
+  $('sBase').textContent=baseScore.toFixed(2);
+  $('sCur').textContent=cur.toFixed(2);
+  const d=cur-baseScore;
+  $('sDelta').textContent=(d>=0?'▲':'▼')+Math.abs(d).toFixed(2);
+  $('sDelta').className=d>=0?'up':'dn';
+  $('sMoved').textContent=movedCount(assign);
+}
+function renderSectInfo(colors){
+  const el=$('sectinfo');
+  if(!selectedSect){el.innerHTML='<p style="font-size:12px;color:var(--soft)">尚未選取。在選取模式下點任一成員。</p>';return;}
+  const p=P();const st=sectStats(selectedSect);
+  const conn=st.n>1?1-(st.comp-1)/st.n:1;
+  const dist=st.n>1?Math.max(0,1-st.avg/G.diag):1;
+  const coh=p.w1*conn+p.w2*st.ratio+p.w3*dist;
+  const cohMax=p.w1+p.w2+p.w3;
+  const dept=members.get(selectedMember).dept;
+  el.innerHTML=`
+    <div class="hd"><span class="sw" style="background:${colors[selectedSect]}"></span>
+      <b>${selectedSect}</b><span style="color:var(--soft)">/ ${dept} · 選取 ${selectedMember}</span></div>
+    <table>
+      <tr><td>人數</td><td>${st.n}</td></tr>
+      <tr><td>位移人數(vs 初始)</td><td>${st.moved} 人</td></tr>
+      <tr><td>連通區塊</td><td>${st.comp} 塊</td></tr>
+      <tr><td>鄰居同課比例</td><td>${(st.ratio*100).toFixed(0)}%</td></tr>
+      <tr><td>課內平均距離</td><td>${st.avg.toFixed(1)} 格</td></tr>
+      <tr><td>內聚分數</td><td>${coh.toFixed(3)} / ${cohMax.toFixed(2)}</td></tr>
+    </table>
+    <div class="bar"><i style="width:${Math.min(100,coh/cohMax*100).toFixed(0)}%"></i></div>`;
+}
+function renderTeamBar(colors){
+  const el=$('teambar');if(!el)return;
+  el.innerHTML='';
+  const p=P();const cohMax=p.w1+p.w2+p.w3;
+  for(const s of allSects().sort()){
+    const st=sectStats(s);if(!st)continue;
+    const conn=st.n>1?1-(st.comp-1)/st.n:1;
+    const dist=st.n>1?Math.max(0,1-st.avg/G.diag):1;
+    const coh=p.w1*conn+p.w2*st.ratio+p.w3*dist;
+    const teamMembers=[...members.values()].filter(x=>x.sect===s);
+    const isLocked=teamMembers.every(x=>x.locked);
+    const card=document.createElement('div');
+    card.className='team'+(selectedSect===s?' active':'');
+    if(isLocked)card.style.filter='saturate(.45)';
+    card.innerHTML=`
+      <div class="tname" style="background:${colors[s]}">${isLocked?'💣':''}${s}<i>×${st.n}</i></div>
+      <div class="tstats">搬 <b>${st.moved}</b> 人 · <b>${st.comp}</b> 塊<br>內聚 <b>${coh.toFixed(2)}</b>/${cohMax.toFixed(2)}</div>
+      <div class="tbar"><i style="width:${Math.min(100,coh/cohMax*100).toFixed(0)}%"></i></div>`;
+    const lockBtn=document.createElement('button');
+    lockBtn.textContent=isLocked?'🔓 解鎖':'🔒 鎖隊';
+    lockBtn.style.cssText='width:100%;padding:2px;font-size:10px;box-shadow:none;border-width:2px 0 0 0';
+    lockBtn.onclick=e=>{
+      e.stopPropagation();
+      for(const x of teamMembers)x.locked=!isLocked;
+      log((isLocked?'解鎖':'鎖定')+`戰隊 ${s}(${teamMembers.length} 人)`);
+      renderAll();
+    };
+    card.appendChild(lockBtn);
+    card.onclick=()=>{
+      if(selectedSect===s){selectedSect=null;selectedMember=null;}
+      else{selectedSect=s;selectedMember=membersOf(s,false)[0];}
+      renderAll();
+    };
+    el.appendChild(card);
+  }
+}
+function renderLegend(colors){
+  const el=$('legend');el.innerHTML='';
+  for(const s of allSects().sort()){
+    const st=sectStats(s);
+    const row=document.createElement('div');row.className='lg';
+    const allLocked=[...members.values()].filter(x=>x.sect===s).every(x=>x.locked);
+    row.innerHTML=`<span class="sw" style="background:${colors[s]}"></span>
+      <span>${s}</span><span class="st">${st.n}人/${st.comp}塊/搬${st.moved}</span>`;
+    row.onclick=e=>{if(e.target.tagName==='BUTTON')return;
+      selectedSect=s;selectedMember=membersOf(s,false)[0];renderAll();};
+    const btn=document.createElement('button');
+    btn.textContent=allLocked?'解鎖':'全鎖';
+    btn.onclick=()=>{for(const x of members.values())if(x.sect===s)x.locked=!allLocked;renderAll();};
+    row.appendChild(btn);el.appendChild(row);
+  }
+}
+function renderProposals(){
+  const el=$('proposals');
+  if(!proposals.length){el.innerHTML='<p style="font-size:12px;color:var(--soft)">按「跑一輪」產生建議。</p>';return;}
+  el.innerHTML='';
+  proposals.forEach((m,i)=>{
+    const div=document.createElement('div');
+    div.className='mv'+(m.status!=='pending'?' done':'');
+    div.onmouseenter=()=>hot(m,true);div.onmouseleave=()=>hot(m,false);
+    const mem=members.get(m.pid);
+    let body=m.pid2
+      ?`<b>${m.pid}</b>(${mem.sect}) ⇄ <b>${m.pid2}</b>(${members.get(m.pid2).sect})`
+      :`<b>${m.pid}</b>(${mem.sect})→ 空位 ${m.to}`;
+    div.innerHTML=`${body}<div class="d">Δscore <b>+${m.d.toFixed(3)}</b> · ${m.from} → ${m.to}</div>`;
+    if(m.status==='pending'){
+      const acts=document.createElement('div');acts.className='acts';
+      const ok=document.createElement('button');ok.textContent='✓ 接受';ok.onclick=()=>acceptMove(i);
+      const no=document.createElement('button');no.textContent='✕ 否決';no.onclick=()=>rejectMove(i);
+      acts.append(ok,no);div.appendChild(acts);
+    }else{
+      div.innerHTML+=`<div class="d">${{accepted:'已接受',rejected:'已否決(加入約束)',stale:'已作廢'}[m.status]}</div>`;
+    }
+    el.appendChild(div);
+  });
+}
+function hot(m,on){
+  for(const sid of [m.from,m.to]){
+    const s=G.seats.get(sid);
+    const el=document.querySelector(`.cell[data-k="${key(s.row,s.col)}"]`);
+    if(el)el.classList.toggle('hot',on);
+  }
+}
+
+/* ══════ rules modal ══════ */
+$('pNames').onchange=()=>renderAll();
+$('rulesBtn').onclick=()=>$('rulesOverlay').classList.add('open');
+$('rulesClose').onclick=()=>$('rulesOverlay').classList.remove('open');
+$('rulesOverlay').onclick=e=>{if(e.target.id==='rulesOverlay')$('rulesOverlay').classList.remove('open');};
+document.addEventListener('keydown',e=>{if(e.key==='Escape')$('rulesOverlay').classList.remove('open');});
+
+/* ══════ modes / io ══════ */
+const setMode=m=>{
+  mode=m;swapSel=null;
+  for(const[id,v]of[['modeSelect','select'],['modeLock','lock'],['modeSwap','swap'],['modeTerrain','terrain']])
+    $(id).classList.toggle('on',v===m);
+  $('modeHint').textContent={
+    select:'點一個人 → 高亮同 sect 全員並顯示課別狀態。點空白處取消。',
+    lock:'點人放置💣鎖定(不參與優化);點空位標記禁用。',
+    swap:'點第一格選取,再點第二格交換;點空位則搬過去。',
+    terrain:'點格子「邊緣」= 該側隔板開/關;點「中央」= 空位⇄走道互轉(有人的座位要先移走)。改完鄰接與基準分自動重算。'}[m];
+  renderAll();
+};
+$('modeSelect').onclick=()=>setMode('select');
+$('modeLock').onclick=()=>setMode('lock');
+$('modeSwap').onclick=()=>setMode('swap');
+$('modeTerrain').onclick=()=>setMode('terrain');
+$('dropzone').onclick=()=>$('fileInput').click();
+$('fileInput').onchange=e=>readFile(e.target.files[0]);
+$('dropzone').ondragover=e=>e.preventDefault();
+$('dropzone').ondrop=e=>{e.preventDefault();readFile(e.dataTransfer.files[0]);};
+function readFile(f){
+  if(!f)return;
+  f.text().then(t=>{try{loadGrid(JSON.parse(t));}catch(err){log('解析失敗:'+err.message);}});
+}
+function dl(name,text){
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([text],{type:'text/plain'}));
+  a.download=name;a.click();
+}
+$('btnExportMoves').onclick=()=>{
+  const esc=v=>{v=String(v??'');return /[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v;};
+  let csv='order,member,raw,from_seat,to_seat,swap_with\n';
+  history.forEach((m,i)=>{
+    const raw=members.get(m.pid)?.raw||'';
+    csv+=`${i+1},${m.pid},${esc(raw)},${m.from},${m.to},${m.pid2}\n`;
+  });
+  dl('move_list.csv',csv);
+  dl('constraints.json',JSON.stringify({
+    locked:[...members.values()].filter(m=>m.locked).map(m=>m.id),
+    banned_seats:[...bannedSeats],banned_moves:[...bannedMoves]},null,2));
+};
+$('btnExportGrid').onclick=()=>{
+  if(!G)return;
+  dl('grid_current.json',JSON.stringify({
+    meta:{round,exported:new Date().toISOString()},
+    members:[...members.values()].map(m=>({id:m.id,name:m.name,dept:m.dept,sect:m.sect,locked:m.locked,raw:m.raw})),
+    seats:[...G.seats.values()].map(s=>({seat_id:s.seat_id,row:s.row,col:s.col,barriers:[...s.barriers],walkway:[...(s.walkway||[])]})),
+    assignment:Object.fromEntries(assign),
+    baseline_assignment:Object.fromEntries([...members.values()].map(m=>[m.id,m.homeSeat])),
+    cells:[...G.cellAt].map(([k,t])=>{const[r,c]=k.split(',').map(Number);return{row:r,col:c,cell_type:t};})
+  },null,2));
+};
+
+/* ══════ demo ══════ */
+$('btnDemo').onclick=()=>{
+  // 真實格局:2×8 pod;pod 內兩排背對背由小走道連通(不建格、不隔斷),
+  // pod 與 pod 之間沒有走道、只隔一道隔板,直接貼著;中央主走道 2 格寬。
+  const POD_W=8;
+  const R=8;                       // 0牆 | 1-2 pod | 3-4 pod | 5-6 pod | 7牆
+  const C=2+POD_W*2+2;             // 牆 + 左8 + 中央走道2 + 右8 + 牆 = 20
+  const AISLE_COLS=[1+POD_W,2+POD_W];      // c=9,10
+  let rng=42;const rand=()=>{rng=(rng*1103515245+12345)&0x7fffffff;return rng/0x7fffffff;};
+  const cells=[],seats=[];
+  let seatNo=1;
+  for(let r=0;r<R;r++)for(let c=0;c<C;c++){
+    if(r===0||r===R-1||c===0||c===C-1){cells.push({row:r,col:c,cell_type:'WALL'});continue;}
+    if(AISLE_COLS.includes(c)){cells.push({row:r,col:c,cell_type:'AISLE'});continue;}
+    const seat={seat_id:'A'+String(seatNo++).padStart(3,'0'),row:r,col:c,barriers:[],walkway:[]};
+    if(r===3||r===5)seat.barriers.push('N');   // pod 邊界隔板(pod1|pod2、pod2|pod3)
+    if(r===1||r===3||r===5)seat.walkway.push('S'); // pod 內小走道(視覺,不影響鄰接)
+    seats.push(seat);
+  }
+  // 兩大區:D1 走道左、D2 走道右,各 40 人
+  const bands=[[],[]];
+  for(const s of seats) bands[s.col<AISLE_COLS[0]?0:1].push(s);
+  // pod 內蛇形排位:同 pod 的 16 格連續
+  const podOf=r=> r<=2?0:(r<=4?1:2);
+  for(const b of bands) b.sort((a,x)=>{
+    const pa=podOf(a.row),px=podOf(x.row);
+    return pa-px||a.row-x.row||((a.row%2)?x.col-a.col:a.col-x.col);
+  });
+  const membersArr=[],assignment={};
+  let memNo=1,sectNo=1;
+  ['D1','D2'].forEach((dept,bi)=>{
+    const arr=bands[bi];
+    // 每 dept 固定 6 個 sect(全場 12 個),規模 1~9、總和 = 40
+    const sizes=[7,7,7,7,6,6];
+    for(let k=0;k<40;k++){
+      const i=Math.floor(rand()*6),j=Math.floor(rand()*6);
+      if(i!==j&&sizes[i]<9&&sizes[j]>1){sizes[i]++;sizes[j]--;}
+    }
+    let i=0;
+    sizes.forEach((size,sc)=>{
+      const sect=`${bi+1}-0${String.fromCharCode(65+sc)}`;  // 1-0A…1-0F / 2-0A…2-0F
+      sectNo++;
+      for(let k=0;k<size&&i<arr.length;k++){
+        while(i<arr.length&&rand()<0.12)i++;        // 隨機空位
+        if(i>=arr.length)break;
+        const id='M'+String(memNo++).padStart(3,'0');
+        membersArr.push({id,name:id,dept,sect,raw:`${dept}|${sect}|${id}`});
+        assignment[id]=arr[i++].seat_id;
+      }
+    });
+  });
+  // 打散:隨機互換 ~10% 的人,製造孤點與碎片
+  const ids=membersArr.map(m=>m.id);
+  for(let k=0;k<Math.floor(ids.length*0.10);k++){
+    const a=ids[Math.floor(rand()*ids.length)],b=ids[Math.floor(rand()*ids.length)];
+    if(a===b)continue;
+    const t=assignment[a];assignment[a]=assignment[b];assignment[b]=t;
+  }
+  loadGrid({meta:{source:'demo'},members:membersArr,seats,assignment,cells});
+  log(`已載入示範樓面:2×8 pod ×6、${membersArr.length} 人、${sectNo-1} 個 sect;中央走道×2寬、pod 間僅隔板無走道`);
+};
+
+/* 開檔即自動載入 demo,拖入自己的 grid.json 會直接覆蓋 */
+$('btnDemo').click();
+</script>
+</body>
+</html>
