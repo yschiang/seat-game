@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>SEAT BOMBER — 座位重組優化台 v2</title>
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=DotGothic16&family=Press+Start+2P&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=DotGothic16&family=Press+Start+2P&family=Noto+Color+Emoji&display=swap');
   :root{
     --bg:#14201A; --sheet:#1C2A22; --panel2:#24352B; --line:#35503F;
     --ink:#EAF4EC; --soft:#9CC4A8;
@@ -14,9 +14,9 @@
     --pathA:#D8B569; --pathB:#C9A557;
     --fence:#8B5228; --fenceHi:#C48A50;
     --gold:#FFD447; --accent:#FF7830; --blast:#FFEE60; --ok:#5DE28A;
-    --mono:'DotGothic16',ui-monospace,monospace;
-    --sans:'DotGothic16','PingFang TC','Noto Sans TC',system-ui,sans-serif;
-    --px8:'Press Start 2P','DotGothic16',monospace;
+    --mono:'DotGothic16',ui-monospace,monospace,'Noto Color Emoji','Segoe UI Emoji','Apple Color Emoji';
+    --sans:'DotGothic16','PingFang TC','Noto Sans TC',system-ui,sans-serif,'Noto Color Emoji','Segoe UI Emoji','Apple Color Emoji';
+    --px8:'Press Start 2P','DotGothic16',monospace,'Noto Color Emoji','Segoe UI Emoji';
   }
   *{box-sizing:border-box;margin:0;padding:0;border-radius:0!important}
   html,body{height:100%}
@@ -75,6 +75,10 @@
   .wseg{width:54px;height:16px;flex:none}
   .wseg.sand{background:repeating-linear-gradient(90deg,var(--pathA) 0 9px,var(--pathB) 9px 18px);
     border-top:2px dashed rgba(0,0,0,.35);border-bottom:2px dashed rgba(0,0,0,.35);box-sizing:border-box}
+  .wseg.sand.fenced{position:relative}
+  .wseg.sand.fenced::after{content:'';position:absolute;left:0;right:0;top:4px;height:8px;
+    background:repeating-linear-gradient(90deg,var(--fenceHi) 0 7px,var(--fence) 7px 14px);
+    border-top:2px solid #000;border-bottom:2px solid #000;box-sizing:border-box}
   .wseg.wall{background:var(--wall)}
   .wseg.aisle{background:var(--pathB)}
   #arrows{position:absolute;inset:0;pointer-events:none;overflow:visible}
@@ -150,8 +154,20 @@
   .cell.mate.focus{outline-color:#FFF}
   .cell.mate.focus::after{color:#FFF}
   .cell.dim{filter:grayscale(.9) brightness(.42)}
+  /* 同 product(不同 sect):青色虛線框 + ◆ */
+  .cell.pmate{outline:3px dashed #78EBFF;outline-offset:-3px;z-index:2;filter:none}
+  .cell.pmate::after{content:'◆';position:absolute;top:-14px;left:50%;margin-left:-6px;
+    color:#78EBFF;font-size:12px;text-shadow:1px 1px 0 #000;z-index:3}
   .cell.sel{outline:3px solid var(--blast);outline-offset:-3px;animation:blink .6s steps(2) infinite}
   .cell.hot{outline:3px solid #FFF;outline-offset:-3px;z-index:2}
+  /* 佈置:小花 */
+  .deco{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+    font-size:28px;z-index:2;pointer-events:none;filter:drop-shadow(1px 2px 0 rgba(0,0,0,.5))}
+  /* Manager 座位:一般 1×1,金框+皇冠標識 */
+  .cell.mgrseat{box-shadow:inset 0 0 0 3px var(--gold)}
+  .cell.mgrseat::before{content:'👑';position:absolute;top:-1px;left:1px;font-size:13px;z-index:3;
+    filter:drop-shadow(1px 1px 0 #000)}
+  .cell.mgrseat.locked .bomber::after{content:''}
   .homeMark{position:absolute;inset:1px;border:3px dashed var(--gold);z-index:2;pointer-events:none}
   .homeMark span{position:absolute;top:-2px;left:-2px;background:var(--gold);color:#101010;
     font-family:var(--mono);font-size:9px;line-height:11px;padding:0 3px;font-weight:700}
@@ -242,6 +258,7 @@
         <tr><td>木柵欄</td><td>隔板,不佔格,立在兩格之間。兩側都能坐,但柵欄兩側<b>不算相鄰</b></td></tr>
         <tr><td>虛線框</td><td>空位,可以搬人進來</td></tr>
         <tr><td>💣 炸彈</td><td>鎖定標記 — 這個人已佈防,任何優化都不會動他</td></tr>
+        <tr><td>👑 / 🌼</td><td>Manager 座位與小花:皆為「佔位但透明」— 擋住座位、不能被指派,也完全不進計分(鄰居比例的分母同樣排除)</td></tr>
         <tr><td>爆風光束</td><td>本輪的移動建議,從現位炸向目標位</td></tr>
       </table>
 
@@ -253,6 +270,7 @@
         <tr><td>w2 緊密(0.35)</td><td>每人四鄰中同隊的比例。懲罰「連著但拉成長蛇」的排法</td></tr>
         <tr><td>w3 距離(0.15)</td><td>隊內平均距離,只做微調 tiebreak</td></tr>
         <tr><td>w4 dept(0.15)</td><td>同 dept 各戰隊連成大區的加分</td></tr>
+        <tr><td>w5 product(0.9)</td><td>第二群組軸:同 product 的內聚,與 sect 同構、權重略低——sect 最優先,product 幾乎一樣好。選取時同品異課者標 ◆</td></tr>
         <tr><td>λ 搬動成本(0.5)</td><td>每搬一人扣的分。λ 越大方案越保守。<b>位移永遠對比最初座位</b>,搬回原位會退款</td></tr>
       </table>
       <p class="kv">戰隊計分板(最上排)顯示每隊人數、已搬、塊數、內聚血條。血條全滿 = 完美聚合。</p>
@@ -303,6 +321,7 @@
         <button id="modeLock">💣 鎖定</button>
         <button id="modeSwap">⇄ 交換</button>
         <button id="modeTerrain">🔧 地形</button>
+        <button id="modeDeco">🌼 佈置</button>
       </div>
       <p style="font-size:11px;color:var(--soft);margin-top:6px" id="modeHint">
         點一個人 → 高亮同 sect 全員並顯示課別狀態。點空白處取消。
@@ -325,6 +344,7 @@
       <label class="param">w2 鄰居同課 <input type="number" id="pW2" value="0.35" step="0.05" min="0"></label>
       <label class="param">w3 距離 <input type="number" id="pW3" value="0.15" step="0.05" min="0"></label>
       <label class="param">w4 dept連通 <input type="number" id="pW4" value="0.15" step="0.05" min="0"></label>
+      <label class="param">w5 product內聚 <input type="number" id="pW5" value="0.9" step="0.05" min="0" max="1"></label>
       <label class="param">每輪最多移動 <input type="number" id="pMax" value="5" step="1" min="1" max="20"></label>
       <label class="param">候選半徑(99=全場) <input type="number" id="pRad" value="99" step="1" min="2"></label>
     </section>
@@ -383,7 +403,7 @@ let baseScore=null, round=0, mode='select', swapSel=null, selectedSect=null, sel
 const $=id=>document.getElementById(id);
 const key=(r,c)=>r+','+c;
 const P=()=>({lam:+$('pLam').value,w1:+$('pW1').value,w2:+$('pW2').value,
-  w3:+$('pW3').value,w4:+$('pW4').value,maxMv:+$('pMax').value,rad:+$('pRad').value});
+  w3:+$('pW3').value,w4:+$('pW4').value,w5:+$('pW5').value,maxMv:+$('pMax').value,rad:+$('pRad').value});
 const log=m=>{const el=$('log');el.textContent=(new Date()).toTimeString().slice(0,8)+'  '+m+'\n'+el.textContent;};
 const OPP={N:'S',S:'N',E:'W',W:'E'};
 const DIR={N:[-1,0],S:[1,0],E:[0,1],W:[0,-1]};
@@ -393,7 +413,8 @@ function loadGrid(json){
   const seats=new Map(), seatByPos=new Map(), cellAt=new Map();
   let maxR=0,maxC=0;
   for(const s of json.seats){
-    seats.set(s.seat_id,{...s,barriers:new Set(s.barriers||[]),walkway:new Set(s.walkway||[])});
+    seats.set(s.seat_id,{...s,w:s.w||1,seat_type:s.seat_type||'STD',deco:s.deco||null,
+      barriers:new Set(s.barriers||[]),walkway:new Set(s.walkway||[])});
     seatByPos.set(key(s.row,s.col),s.seat_id);
     maxR=Math.max(maxR,s.row); maxC=Math.max(maxC,s.col);
   }
@@ -439,11 +460,12 @@ function loadGrid(json){
 function buildAdj(){
   const adj=new Map();
   for(const s of G.seats.values()){
+    if(s.seat_type==='MGR'){adj.set(s.seat_id,[]);continue;}   // MGR = 佔用不可換的格,不參與拓撲
     const out=[];
     for(const [b,[dr,dc]] of Object.entries(DIR)){
       if(s.barriers.has(b)) continue;
       const nId=G.seatByPos.get(key(s.row+dr,s.col+dc));
-      if(nId) out.push(nId);
+      if(nId&&G.seats.get(nId).seat_type!=='MGR') out.push(nId);
     }
     adj.set(s.seat_id,out);
   }
@@ -467,6 +489,7 @@ function toggleBarrier(sid,side){
   terrainChanged(`${has?'移除':'加上'}隔板:${sid} 的 ${side} 側`);
 }
 function seatToAisle(sid){
+  if(G.seats.get(sid).seat_type==='MGR'){log('⚠ manager 座位不參與地形編輯');return;}
   if(occ.has(sid)){log('⚠ 該座位有人,先移走才能改成走道');return;}
   if([...members.values()].some(m=>m.homeSeat===sid)){
     log('⚠ 該座位是某成員的 R0 原始座位,不能改走道(會破壞基準)');return;}
@@ -488,8 +511,10 @@ function aisleToSeat(r,c){
 const posOf=sid=>{const s=G.seats.get(sid);return [s.row,s.col];};
 function membersOf(sect,byDept){
   const out=[];
-  for(const m of members.values())
+  for(const m of members.values()){
+    if(m.grade==='MGR')continue;              // MGR 不納入任何內聚/dept 計算
     if(byDept? m.dept===sect : m.sect===sect) out.push(m.id);
+  }
   return out;
 }
 function componentsOf(seatIds){
@@ -502,9 +527,8 @@ function componentsOf(seatIds){
   }
   return comp;
 }
-function sectStats(sect,asg){
+function statsForIds(ids,asg){
   asg=asg||assign;
-  const ids=membersOf(sect,false);
   const cells=ids.map(id=>asg.get(id));
   const n=ids.length;
   if(!n) return null;
@@ -513,7 +537,7 @@ function sectStats(sect,asg){
   const cellSet=new Set(cells);
   let ratio=0,cnt=0;
   for(const c of cells){
-    const nbrs=G.adj.get(c);
+    const nbrs=(G.adj.get(c)||[]).filter(x=>!G.seats.get(x).deco);
     if(!nbrs.length)continue;
     ratio+=nbrs.filter(x=>cellSet.has(x)).length/nbrs.length;cnt++;
   }
@@ -526,6 +550,16 @@ function sectStats(sect,asg){
     avg=sum/m;}
   const moved=ids.filter(id=>asg.get(id)!==members.get(id).homeSeat).length;
   return {n,comp,ratio,avg,moved,cells};
+}
+function sectStats(sect,asg){return statsForIds(membersOf(sect,false),asg);}
+const allProducts=()=>[...new Set([...members.values()].filter(m=>m.grade!=='MGR').map(m=>m.product).filter(Boolean))];
+const productMembers=pv=>[...members.values()].filter(m=>m.product===pv&&m.grade!=='MGR').map(m=>m.id);
+function productStats(pv,asg){return statsForIds(productMembers(pv),asg);}
+function productScore(pv,asg,p){
+  const st=productStats(pv,asg); if(!st||!st.n)return 0;
+  const conn=st.n>1?1-(st.comp-1)/st.n:1;
+  const dist=st.n>1?Math.max(0,1-st.avg/G.diag):1;
+  return (p.w1*conn+p.w2*st.ratio+p.w3*dist)*st.n;   // 與 sect 同構,權重由 w5 於總分處施加
 }
 function sectScore(sect,asg,p){
   const st=sectStats(sect,asg); if(!st)return 0;
@@ -541,14 +575,18 @@ function deptScore(dept,asg,p){
   return p.w4*(ids.length-comp+1);
 }
 function movedCount(asg){
-  let n=0;for(const [id,s] of asg) if(s!==members.get(id).homeSeat)n++;return n;
+  let n=0;for(const [id,s] of asg){
+    const m=members.get(id);
+    if(m.grade!=='MGR'&&s!==m.homeSeat)n++;
+  }return n;
 }
-const allSects=()=> [...new Set([...members.values()].map(m=>m.sect))];
-const allDepts=()=> [...new Set([...members.values()].map(m=>m.dept))];
+const allSects=()=> [...new Set([...members.values()].filter(m=>m.grade!=='MGR').map(m=>m.sect))];
+const allDepts=()=> [...new Set([...members.values()].filter(m=>m.grade!=='MGR').map(m=>m.dept))];
 function totalScore(asg){
   asg=asg||assign;const p=P();let s=0;
   for(const x of allSects())s+=sectScore(x,asg,p);
   for(const x of allDepts())s+=deptScore(x,asg,p);
+  for(const x of allProducts())s+=p.w5*productScore(x,asg,p);
   return s-p.lam*movedCount(asg);
 }
 
@@ -556,7 +594,7 @@ function totalScore(asg){
 function emptySeats(o){
   const out=[];
   for(const sid of G.seats.keys())
-    if(!o.has(sid)&&!bannedSeats.has(sid))out.push(sid);
+    if(!o.has(sid)&&!bannedSeats.has(sid)&&G.seats.get(sid).seat_type!=='MGR'&&!G.seats.get(sid).deco)out.push(sid);
   return out;
 }
 function centroidOf(cells){
@@ -606,16 +644,19 @@ function proposeRound(){
 }
 function tryDelta(asg,o,pid,to,pid2,p){
   const m=members.get(pid),from=asg.get(pid);
-  const sects=new Set([m.sect]),depts=new Set([m.dept]);
-  if(pid2){sects.add(members.get(pid2).sect);depts.add(members.get(pid2).dept);}
+  const sects=new Set([m.sect]),depts=new Set([m.dept]),prods=new Set();
+  if(m.product)prods.add(m.product);
+  if(pid2){const m2=members.get(pid2);sects.add(m2.sect);depts.add(m2.dept);if(m2.product)prods.add(m2.product);}
   let before=0;
   for(const s of sects)before+=sectScore(s,asg,p);
   for(const d of depts)before+=deptScore(d,asg,p);
+  for(const pv of prods)before+=p.w5*productScore(pv,asg,p);
   const mB=movedCount(asg);
   applyMove(asg,o,{pid,from,to,pid2});
   let after=0;
   for(const s of sects)after+=sectScore(s,asg,p);
   for(const d of depts)after+=deptScore(d,asg,p);
+  for(const pv of prods)after+=p.w5*productScore(pv,asg,p);
   const mA=movedCount(asg);
   applyMove(asg,o,{pid,from:to,to:from,pid2});
   return (after-before)-p.lam*(mA-mB);
@@ -769,6 +810,7 @@ function renderAll(){
     // 隔板(木柵欄)
     const s=G.seats.get(sid);
     for(const b of s.barriers){
+      if(b==='S'&&s.walkway&&s.walkway.has('S'))continue;  // 柵欄立在走道上,由窄列呈現
       const f=document.createElement('div');
       f.className='fence f'+b;
       div.appendChild(f);
@@ -781,6 +823,7 @@ function renderAll(){
       div.appendChild(wd);
     }
     const pid=occ.get(sid);
+    if(G.seats.get(sid).seat_type==='MGR')div.classList.add('mgrseat');
     if(pid){
       const m=members.get(pid);
       const b=document.createElement('div');b.className='bomber';
@@ -797,10 +840,15 @@ function renderAll(){
       }
       if(m.locked)div.classList.add('locked');
       if(selectedSect){
+        const sm=members.get(selectedMember);
         if(m.sect===selectedSect){div.classList.add('mate');
           if(pid===selectedMember)div.classList.add('focus');}
+        else if(sm&&sm.product&&m.product===sm.product)div.classList.add('pmate');
         else div.classList.add('dim');
       }
+    }else if(G.seats.get(sid).deco){
+      const dv=document.createElement('div');dv.className='deco';dv.textContent='🌼';
+      div.appendChild(dv);
     }else{
       div.classList.add('emptyseat');
       if(bannedSeats.has(sid))div.classList.add('bannedseat');
@@ -827,7 +875,10 @@ function renderAll(){
       const seg=document.createElement('div');seg.className='wseg';
       const sAbove=G.seatByPos.get(key(r,c));
       const t2=G.cellAt.get(key(r,c));
-      if(sAbove&&G.seats.get(sAbove).walkway.has('S'))seg.classList.add('sand');
+      if(sAbove&&G.seats.get(sAbove).walkway.has('S')){
+        seg.classList.add('sand');
+        if(G.seats.get(sAbove).barriers.has('S'))seg.classList.add('fenced');
+      }
       else if(t2==='WALL')seg.classList.add('wall');
       else if(t2==='AISLE')seg.classList.add('aisle');
       wr.appendChild(seg);
@@ -842,14 +893,29 @@ function showTip(e,sid){
   let s=`座位 ${sid}`;
   if(pid){const m=members.get(pid);
     s+=`\n${m.name||m.id}\ndept ${m.dept} / sect ${m.sect}`;
+    if(m.product)s+=`\nproduct ${m.product}`;
+    if(m.grade==='MGR')s+='\n👑 MGR(本輪不移動)';
     if(m.raw)s+=`\nraw: ${m.raw}`;
     if(assign.get(pid)!==m.homeSeat)s+=`\n(原座位 ${m.homeSeat})`;
     if(m.locked)s+='\n💣 已鎖定';
-  }else s+='\n空位'+(bannedSeats.has(sid)?'(禁用)':'');
+  }else if(G.seats.get(sid).deco)s+='\n🌼 佈置(不排人)';
+  else s+='\n空位'+(bannedSeats.has(sid)?'(禁用)':'');
   t.textContent=s;t.style.display='block';
   t.style.left=(e.clientX+14)+'px';t.style.top=(e.clientY+14)+'px';
 }
 function cellClick(sid,e){
+  if(mode==='deco'){
+    const s=G.seats.get(sid);
+    if(occ.has(sid)){log('🌼 這格有人坐,不能擺花');return;}
+    const nearMgr=[[1,0],[-1,0],[0,1],[0,-1]].some(([dr,dc])=>{
+      for(const o of G.seats.values())
+        if(o.seat_type==='MGR'&&o.row===s.row+dr&&o.col===s.col+dc)return true;
+      return false;});
+    if(!nearMgr&&!s.deco){log('🌼 小花只能擺在 manager 座位旁邊的空位');return;}
+    s.deco=s.deco?null:'flower';
+    log(s.deco?`🌼 在 ${sid} 擺上小花(此格不再排人)`:`已移除 ${sid} 的小花`);
+    renderAll();return;
+  }
   if(mode==='terrain'){
     // 點邊緣 13px 內 = 該側隔板開關;點中央 = 座位 ⇄ 走道
     const x=e?e.offsetX:27,y=e?e.offsetY:27,M=15;
@@ -868,7 +934,9 @@ function cellClick(sid,e){
     }else{selectedSect=null;selectedMember=null;}
     renderAll();
   }else if(mode==='lock'){
-    if(pid){const m=members.get(pid);m.locked=!m.locked;}
+    if(pid){const m=members.get(pid);
+      if(m.grade==='MGR'){log('👑 本輪規則:manager 不移動,鎖定不可變更');return;}
+      m.locked=!m.locked;}
     else bannedSeats.has(sid)?bannedSeats.delete(sid):bannedSeats.add(sid);
     renderAll();
   }else{
@@ -886,7 +954,7 @@ function drawArrows(){
   const svg=$('arrows');svg.innerHTML='';
   svg.setAttribute('width',$('floor').offsetWidth);
   svg.setAttribute('height',$('floor').offsetHeight);
-  const ctr=sid=>{const[r,c]=posOf(sid);return[c*54+27,(rowY[r]||r*54)+27];};
+  const ctr=sid=>{const s=G.seats.get(sid);return[s.col*54+27,(rowY[s.row]||s.row*54)+27];};
   // 選取的已搬成員:R0 起點 → 現位 虛線
   if(selectedMember){
     const sm=members.get(selectedMember);
@@ -944,6 +1012,10 @@ function renderSectInfo(colors){
     <table>
       <tr><td>選取者座位</td><td>${assign.get(selectedMember)}${(()=>{const sm=members.get(selectedMember);return assign.get(selectedMember)!==sm.homeSeat?`(R0:${sm.homeSeat})`:'(未搬)';})()}</td></tr>
       <tr><td>人數</td><td>${st.n}</td></tr>
+      ${(()=>{const sm=members.get(selectedMember);
+        if(!sm||!sm.product)return '';
+        const ps=productStats(sm.product);
+        return `<tr><td>product ${sm.product}</td><td>${ps.n}人/${ps.comp}塊(◆同品)</td></tr>`;})()}
       <tr><td>位移人數(vs 初始)</td><td>${st.moved} 人</td></tr>
       <tr><td>連通區塊</td><td>${st.comp} 塊</td></tr>
       <tr><td>鄰居同課比例</td><td>${(st.ratio*100).toFixed(0)}%</td></tr>
@@ -1046,19 +1118,21 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape')$('rulesOverlay').cl
 /* ══════ modes / io ══════ */
 const setMode=m=>{
   mode=m;swapSel=null;
-  for(const[id,v]of[['modeSelect','select'],['modeLock','lock'],['modeSwap','swap'],['modeTerrain','terrain']])
+  for(const[id,v]of[['modeSelect','select'],['modeLock','lock'],['modeSwap','swap'],['modeTerrain','terrain'],['modeDeco','deco']])
     $(id).classList.toggle('on',v===m);
   $('modeHint').textContent={
     select:'點一個人 → 高亮同 sect 全員並顯示課別狀態。點空白處取消。',
     lock:'點人放置💣鎖定(不參與優化);點空位標記禁用。',
     swap:'點第一格選取,再點第二格交換;點空位則搬過去。',
-    terrain:'點格子「邊緣」= 該側隔板開/關;點「中央」= 空位⇄走道互轉(有人的座位要先移走)。改完鄰接與基準分自動重算。'}[m];
+    terrain:'點格子「邊緣」= 該側隔板開/關;點「中央」= 空位⇄走道互轉(有人的座位要先移走)。改完鄰接與基準分自動重算。',
+    deco:'點 manager 旁的空位擺放/移除 🌼 小花。擺花的格子不會被排人。'}[m];
   renderAll();
 };
 $('modeSelect').onclick=()=>setMode('select');
 $('modeLock').onclick=()=>setMode('lock');
 $('modeSwap').onclick=()=>setMode('swap');
 $('modeTerrain').onclick=()=>setMode('terrain');
+$('modeDeco').onclick=()=>setMode('deco');
 $('dropzone').onclick=()=>$('fileInput').click();
 $('fileInput').onchange=e=>readFile(e.target.files[0]);
 $('dropzone').ondragover=e=>e.preventDefault();
@@ -1088,8 +1162,8 @@ $('btnExportGrid').onclick=()=>{
   if(!G)return;
   dl('seat_session.json',JSON.stringify({
     meta:{round,exported:new Date().toISOString()},
-    members:[...members.values()].map(m=>({id:m.id,name:m.name,dept:m.dept,sect:m.sect,locked:m.locked,raw:m.raw})),
-    seats:[...G.seats.values()].map(s=>({seat_id:s.seat_id,row:s.row,col:s.col,barriers:[...s.barriers],walkway:[...(s.walkway||[])]})),
+    members:[...members.values()].map(m=>({id:m.id,name:m.name,dept:m.dept,sect:m.sect,product:m.product,grade:m.grade,locked:m.locked,raw:m.raw})),
+    seats:[...G.seats.values()].map(s=>({seat_id:s.seat_id,row:s.row,col:s.col,w:s.w,seat_type:s.seat_type,deco:s.deco||null,barriers:[...s.barriers],walkway:[...(s.walkway||[])]})),
     assignment:Object.fromEntries(assign),
     baseline_assignment:Object.fromEntries([...members.values()].map(m=>[m.id,m.homeSeat])),
     round,
@@ -1105,7 +1179,7 @@ $('btnDemo').onclick=()=>{
   // 真實格局:2×8 pod;pod 內兩排背對背由小走道連通(不建格、不隔斷),
   // pod 與 pod 之間沒有走道、只隔一道隔板,直接貼著;中央主走道 2 格寬。
   const POD_W=8;
-  const R=8;                       // 0牆 | 1-2 pod | 3-4 pod | 5-6 pod | 7牆
+  const R=9;                       // 0牆 | 1-6 三個pod | 7 manager列(1.5×1.5) | 8牆
   const C=2+POD_W*2+2;             // 牆 + 左8 + 中央走道2 + 右8 + 牆 = 20
   const AISLE_COLS=[1+POD_W,2+POD_W];      // c=9,10
   let rng=42;const rand=()=>{rng=(rng*1103515245+12345)&0x7fffffff;return rng/0x7fffffff;};
@@ -1113,6 +1187,19 @@ $('btnDemo').onclick=()=>{
   let seatNo=1;
   for(let r=0;r<R;r++)for(let c=0;c<C;c++){
     if(r===0||r===R-1||c===0||c===C-1){cells.push({row:r,col:c,cell_type:'WALL'});continue;}
+    if(r===6&&[2,4,6,8,11,13,15,17].includes(c)){
+      // manager 正上方一圈:補滿小花(佔位、不排人、不計分)
+      const fs={seat_id:'A'+String(seatNo++).padStart(3,'0'),row:r,col:c,
+                deco:'flower',barriers:[],walkway:[]};
+      seats.push(fs);continue;
+    }
+    if(r===7){
+      // manager 列:僅指定欄有座位(1×1),其餘留空
+      if(![2,4,6,8,11,13,15,17].includes(c))continue;
+      const ms={seat_id:'MG'+String(seatNo++).padStart(2,'0'),row:r,col:c,
+                seat_type:'MGR',barriers:[],walkway:[]};
+      seats.push(ms);continue;
+    }
     if(AISLE_COLS.includes(c)){cells.push({row:r,col:c,cell_type:'AISLE'});continue;}
     const seat={seat_id:'A'+String(seatNo++).padStart(3,'0'),row:r,col:c,barriers:[],walkway:[]};
     if(r===3||r===5)seat.barriers.push('N');   // pod 邊界隔板(pod1|pod2、pod2|pod3)
@@ -1121,7 +1208,10 @@ $('btnDemo').onclick=()=>{
   }
   // 兩大區:D1 走道左、D2 走道右,各 40 人
   const bands=[[],[]];
-  for(const s of seats) bands[s.col<AISLE_COLS[0]?0:1].push(s);
+  for(const s of seats){
+    if(s.seat_type==='MGR'||s.deco)continue;      // mgr 與花圃不進排位池
+    bands[s.col<AISLE_COLS[0]?0:1].push(s);
+  }
   // pod 內蛇形排位:同 pod 的 16 格連續
   const podOf=r=> r<=2?0:(r<=4?1:2);
   for(const b of bands) b.sort((a,x)=>{
@@ -1148,24 +1238,37 @@ $('btnDemo').onclick=()=>{
       const sect=`${bi+1}-0${String.fromCharCode(65+sc)}`;  // 1-0A…1-0F / 2-0A…2-0F
       sectNo++;
       for(let k=0;k<size&&i<arr.length;k++){
-        while(i<arr.length&&rand()<0.12)i++;        // 隨機空位
+        while(i<arr.length&&rand()<0.06)i++;        // 隨機空位
         if(i>=arr.length)break;
         const id='M'+String(memNo++).padStart(3,'0');
         const name=cname();
-        membersArr.push({id,name,dept,sect,raw:`${dept}|${sect}|${id}|${name}`});
+        const PROD=['鳳凰','蒼龍','白虎','玄武'];
+        const product=rand()<0.8?PROD[sc%4]:PROD[Math.floor(rand()*4)];
+        membersArr.push({id,name,dept,sect,product,raw:`${dept}|${sect}|${id}|${name}|${product}`});
         assignment[id]=arr[i++].seat_id;
       }
     });
   });
-  // 打散:隨機互換 ~10% 的人,製造孤點與碎片
-  const ids=membersArr.map(m=>m.id);
+  // Manager:左右各 4 位坐鎮 mgr 座位,本輪鎖定不移動
+  seats.filter(s=>s.seat_type==='MGR').forEach((ms,i)=>{
+    const bi=ms.col<AISLE_COLS[0]?0:1;
+    const id='MGR'+String(i+1).padStart(2,'0');
+    const name=cname();
+    const sect=`${bi+1}-0${String.fromCharCode(65+(i%4))}`;
+    const product=['鳳凰','蒼龍','白虎','玄武'][i%4];
+    membersArr.push({id,name,dept:'D'+(bi+1),sect,product,grade:'MGR',locked:true,
+      raw:`D${bi+1}|${sect}|${id}|${name}|${product}|MGR`});
+    assignment[id]=ms.seat_id;
+  });
+  // 打散:隨機互換 ~10% 的人(排除 manager),製造孤點與碎片
+  const ids=membersArr.filter(m=>m.grade!=='MGR').map(m=>m.id);
   for(let k=0;k<Math.floor(ids.length*0.10);k++){
     const a=ids[Math.floor(rand()*ids.length)],b=ids[Math.floor(rand()*ids.length)];
     if(a===b)continue;
     const t=assignment[a];assignment[a]=assignment[b];assignment[b]=t;
   }
   loadGrid({meta:{source:'demo'},members:membersArr,seats,assignment,cells});
-  log(`已載入示範樓面:2×8 pod ×6、${membersArr.length} 人、${sectNo-1} 個 sect;中央走道×2寬、pod 間僅隔板無走道`);
+  log(`已載入示範樓面:2×8 pod ×6、${membersArr.length} 人、${sectNo-1} 個 sect;中央走道×2寬、pod 間僅隔板、底列 8 位 manager(1×1,鎖定)、mgr 上方 8 格🌼`);
 };
 
 /* 開檔即自動載入 demo,拖入自己的 grid.json 會直接覆蓋 */

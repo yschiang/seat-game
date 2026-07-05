@@ -13,6 +13,7 @@
   "meta": { "source": "..." },
   "members": [
     { "id": "M001", "name": "王小明", "dept": "D1", "sect": "S11", "locked": false,
+      "product": "鳳凰",
       "raw": "原始 Excel 格子字串(原封不動)" }
   ],
   "seats": [
@@ -41,7 +42,9 @@
 3. 有 dept+section 的 SEAT → 生成一個 member(`id` 用人員編號;沒有就用 `seat_id` 當初始 member id,並在報告中註明),寫入 `assignment`。
 4. 欄位名對映:`section`→`sect`;其他名稱差異一律在轉換腳本中處理。
 5. **raw string 跟人走**:原始格子的完整字串放進 `members[].raw`,原封不動、不解析、不清洗。它屬於 member 不屬於座位——人搬到哪,raw 跟到哪,最終審閱時用「新座位 × raw」對照確認。座位本身不保留 raw。
-6. **2×8 pod 的建模**:pod 內兩排之間的窄走道**不建格**——兩排直接建成相鄰的兩列(背對背轉身可討論 = 相鄰,語義正確)。窄走道千萬不要建成 AISLE cell,否則會錯誤地隔斷 pod 內連通。要在畫面上呈現這條窄走道,在 pod 上排的 seat 標 `"walkway": ["S"]`(**純視覺欄位**,不影響任何鄰接或計分)。pod 與 pod 之間的隔板用 `barriers` 建在邊界列上。只有「真正走人的主走道」才建 AISLE cell。
+6. **2×8 pod 的建模**:pod 內兩排之間的窄走道**不建格**——兩排直接建成相鄰的兩列(背對背轉身可討論 = 相鄰,語義正確)。窄走道千萬不要建成 AISLE cell,否則會錯誤地隔斷 pod 內連通。要在畫面上呈現這條窄走道,在 pod 上排的 seat 標 `"walkway": ["S"]`(**純視覺欄位**,不影響任何鄰接或計分)。**共存規則**:同一條邊可以同時有 walkway 和 barrier——拓撲永遠只由 barriers 決定(有柵欄即不相鄰),walkway 只管畫面;「有小走道但被柵欄隔開」就是兩者同標,語義為「走得過去、轉頭講不到話」。pod 與 pod 之間的隔板用 `barriers` 建在邊界列上。只有「真正走人的主走道」才建 AISLE cell。
+7. **Manager 座位(最下列)**:一律建成一般 1×1 格(實體桌面較大不影響格點模型),seat 標 `"seat_type":"MGR"`,對應 member 標 `"grade":"MGR", "locked":true`。語義:本輪 manager 不移動(工具強制:不可解鎖、不成為交換或空位目標、座位不參與地形編輯),但**參與計分**——mgr 與正上方的 member 座位是一般四鄰相鄰,sect 會自然向自己的 manager 聚攏。
+8. **Product 第二群組軸(選填)**:member 可標 `"product"`(字串)。同 product 的內聚與 sect 同構計算、以 w5(預設 0.9)加權——sect 內聚最優先,product 幾乎一樣好,兩軸同時驅動優化。沒有 product 的 member 只參與 sect 軸,不需補假值。
 
 ## 3. 驗證清單(轉換後必跑,全過才交付)
 
